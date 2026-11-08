@@ -1,0 +1,6 @@
+{
+  "name": "オンラインマルチプレイゲーム",
+  "description": "ブラウザで手軽に複数人で遊べるオンラインマルチプレイヤーゲーム",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
