@@ -22,7 +22,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 
-const PORT = Number(process.env.PORT) || 3000;
+// In AI Studio, dev server must run on port 3000. On Render, process.env.PORT is provided.
+const PORT = (process.env.RENDER || (process.env.NODE_ENV === 'production' && process.env.PORT && process.env.PORT !== '8080'))
+  ? (Number(process.env.PORT) || 3000)
+  : 3000;
 const server = http.createServer(app);
 
 // WebSocket server setup
@@ -70,13 +73,9 @@ interface ServerRoom {
 
 const rooms = new Map<string, ServerRoom>();
 
-// Generate 4-character random room code (e.g., 'WOLF', 'LION', etc.)
+// Generate 3-digit numeric room code (e.g., '382')
 function generateRoomCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
+  const code = Math.floor(100 + Math.random() * 900).toString();
   return rooms.has(code) ? generateRoomCode() : code;
 }
 
@@ -789,7 +788,11 @@ JSON配列形式で返してください。
 if (process.env.NODE_ENV !== 'production') {
   const { createServer: createViteServer } = await import('vite');
   const vite = await createViteServer({
-    server: { middlewareMode: true },
+    server: {
+      middlewareMode: true,
+      hmr: process.env.DISABLE_HMR === 'true' ? false : { server },
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
     appType: 'spa',
   });
   app.use(vite.middlewares);
