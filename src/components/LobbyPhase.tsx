@@ -99,8 +99,8 @@ export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
         </h2>
 
         <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
-          URLを友達に共有して同じ部屋に招待するか、下の「ボットを追加」ボタンを押してすぐにテストプレイを開始できます。
-          （最低3人からプレイ可能）
+          3桁の数字コード（{state.roomCode}）または招待URLを友達に共有して参加してもらいましょう。
+          （1人ですぐ試す場合は「ボット追加」でテスト可能）
         </p>
 
         {/* Room Code & Invite button */}
