@@ -8,7 +8,8 @@ import {
   LogIn,
   Bot,
   Flame,
-  ArrowRight
+  ArrowRight,
+  RotateCcw
 } from 'lucide-react';
 import { ClientGameState } from './types/game.ts';
 import { socketService } from './services/socket.ts';
@@ -168,6 +169,37 @@ export default function App() {
               </div>
             </div>
 
+            {/* Re-enter Previous Room Button if available */}
+            {socketService.getLastRoomCode() && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-500/40 flex items-center justify-between gap-3 shadow-lg animate-fade-in">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-purple-300 font-bold uppercase tracking-wider">直前の部屋</div>
+                    <div className="text-xs font-bold text-white">
+                      ルーム【{socketService.getLastRoomCode()}】に再入室
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastCode = socketService.getLastRoomCode();
+                    if (lastCode) {
+                      soundEffects.click();
+                      handleSaveProfile(playerName, selectedAvatar);
+                      socketService.joinRoom(lastCode, playerName, selectedAvatar);
+                    }
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30 transition cursor-pointer"
+                >
+                  再入室する
+                </button>
+              </div>
+            )}
+
             {/* Actions: Create or Join */}
             <div className="space-y-3">
               <button
@@ -234,7 +266,30 @@ export default function App() {
         roomCode={gameState.roomCode}
         connectionStatus={connectionStatus}
         onOpenRules={() => setIsRulesOpen(true)}
+        onLeaveRoom={() => {
+          socketService.leaveRoom();
+          setGameState(null);
+        }}
       />
+
+      {/* Disconnection Sticky Banner */}
+      {connectionStatus !== 'connected' && (
+        <div className="bg-rose-950/95 border-b border-rose-500/40 px-4 py-2.5 text-xs text-rose-200 flex items-center justify-between sticky top-[57px] z-30 shadow-md">
+          <span className="flex items-center gap-2 font-medium">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping" />
+            通信が切断されました（ネットワーク一時切断など。自動再接続中...）
+          </span>
+          <button
+            onClick={() => {
+              soundEffects.click();
+              socketService.reconnect();
+            }}
+            className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition shadow-sm cursor-pointer"
+          >
+            今すぐ再接続
+          </button>
+        </div>
+      )}
 
       <main className="flex-1 p-4 sm:p-6 flex flex-col justify-center">
         {gameState.phase === 'LOBBY' && <LobbyPhase state={gameState} />}
