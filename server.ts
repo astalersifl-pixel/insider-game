@@ -61,12 +61,15 @@ interface ServerRoom {
   secretWord: string;
   secretCategory: string;
   secretHint: string;
+  customSecretWord?: { word: string; category: string; hint: string } | null;
   guesserId: string | null;
   timeRemaining: number;
   timerInterval: NodeJS.Timeout | null;
   questions: QuestionItem[];
   chatMessages: ChatMessage[];
   winnerTeam: 'COMMONERS' | 'INSIDER' | 'TIME_OVER' | null;
+  accusedPlayerId?: string | null;
+  accusedVoteCount?: number;
   votes: Record<string, string>; // voterId -> targetPlayerId
   roundNumber: number;
 }
@@ -98,12 +101,15 @@ function getOrCreateRoom(roomCode: string): ServerRoom {
       secretWord: '',
       secretCategory: '',
       secretHint: '',
+      customSecretWord: null,
       guesserId: null,
       timeRemaining: 300,
       timerInterval: null,
       questions: [],
       chatMessages: [],
       winnerTeam: null,
+      accusedPlayerId: null,
+      accusedVoteCount: 0,
       votes: {},
       roundNumber: 1
     };
@@ -123,8 +129,7 @@ function broadcastRoomState(room: ServerRoom) {
     isBot: p.isBot,
     role: room.phase === 'RESULT' ? p.role : undefined, // only reveal all roles in RESULT phase
     hasVoted: !!room.votes[p.id],
-    votedForId: room.phase === 'RESULT' ? room.votes[p.id] : undefined,
-    score: p.score
+    votedForId: room.phase === 'RESULT' ? room.votes[p.id] : undefined
   }));
 
   for (const [playerId, player] of room.players.entries()) {
@@ -150,11 +155,20 @@ function broadcastRoomState(room: ServerRoom) {
       currentMasterId: room.currentMasterId,
       secretWord: secretWordToSend,
       secretCategory: room.secretCategory,
+      customSecretWord: room.customSecretWord
+        ? {
+            word: player.isHost ? room.customSecretWord.word : '（設定済み）',
+            category: room.customSecretWord.category,
+            hint: room.customSecretWord.hint
+          }
+        : null,
       guesserId: room.guesserId,
       timeRemaining: room.timeRemaining,
       questions: room.questions,
       chatMessages: room.chatMessages.slice(-50),
       winnerTeam: room.winnerTeam,
+      accusedPlayerId: room.accusedPlayerId,
+      accusedVoteCount: room.accusedVoteCount,
       votes: room.phase === 'RESULT' ? room.votes : null,
       roundNumber: room.roundNumber
     };
@@ -310,17 +324,26 @@ function startGameRound(room: ServerRoom) {
     p.isReady = p.isBot ? true : false;
   }
 
-  // Select secret word
-  const wordItem = getRandomWord(room.settings.topicCategory);
-  room.secretWord = wordItem.word;
-  room.secretCategory = wordItem.category;
-  room.secretHint = wordItem.hint;
+  // Select secret word (custom AI/manual word if set, or random from category)
+  if (room.customSecretWord) {
+    room.secretWord = room.customSecretWord.word;
+    room.secretCategory = room.customSecretWord.category;
+    room.secretHint = room.customSecretWord.hint;
+    room.customSecretWord = null; // consumed for this round
+  } else {
+    const wordItem = getRandomWord(room.settings.topicCategory);
+    room.secretWord = wordItem.word;
+    room.secretCategory = wordItem.category;
+    room.secretHint = wordItem.hint;
+  }
 
   // Reset round data
   room.questions = [];
   room.guesserId = null;
   room.votes = {};
   room.winnerTeam = null;
+  room.accusedPlayerId = null;
+  room.accusedVoteCount = 0;
   room.phase = 'ROLE_REVEAL';
 
   addSystemChat(room, `🎮 ラウンド ${room.roundNumber} が開始されました！役職とお題を確認してください。`);
@@ -352,26 +375,18 @@ function evaluateVotingResult(room: ServerRoom) {
   }
 
   room.phase = 'RESULT';
+  room.accusedPlayerId = accusedPlayerId;
+  room.accusedVoteCount = highestVoteCount > 0 ? highestVoteCount : 0;
 
   // Rule:
   // If accused is the Insider -> Commoners & Master win!
   // If accused is NOT the Insider (or tied) -> Insider wins!
   if (!isTie && accusedPlayerId === room.currentInsiderId) {
     room.winnerTeam = 'COMMONERS';
-    // Award points
-    for (const p of room.players.values()) {
-      if (p.role === 'COMMONER' || p.role === 'MASTER') {
-        p.score += (p.id === room.guesserId ? 3 : 2);
-      }
-    }
     addSystemChat(room, `🎉 インサイダー（${room.players.get(room.currentInsiderId || '')?.name || '内通者'}）が見破られました！【庶民 & マスターの勝利】`);
   } else {
     room.winnerTeam = 'INSIDER';
-    // Award points to insider
     const insiderPlayer = room.players.get(room.currentInsiderId || '');
-    if (insiderPlayer) {
-      insiderPlayer.score += 4;
-    }
     addSystemChat(room, `🤫 インサイダー（${insiderPlayer?.name || '内通者'}）は正体を隠し通しました！【インサイダーの単独勝利】`);
   }
 
@@ -574,7 +589,7 @@ wss.on('connection', (ws: WebSocket) => {
             room.guesserId = targetQ.playerId;
             stopRoomTimer(room);
             room.phase = 'DISCUSSION';
-            addSystemChat(room, `🎉 正解が出ました！正解者は【${targetQ.playerName}】さんです！お題は「${room.secretWord}」でした！`);
+            addSystemChat(room, `🎉 マスターが正解と判定しました！正解者は【${targetQ.playerName}】さんです！お題は「${room.secretWord}」でした！`);
             addSystemChat(room, `🕵️‍♂️ これより議論タイムです！誰がインサイダーか怪しい発言・誘導を見極めましょう。`);
             startDiscussionTimer(room);
           }
@@ -594,31 +609,42 @@ wss.on('connection', (ws: WebSocket) => {
           const guess = (data.guessText || '').trim();
           if (!guess) return;
 
-          // If guess is exact match with secret word (case-insensitive / whitespace trimmed)
-          const isMatch = guess.toLowerCase() === room.secretWord.toLowerCase();
+          const isExactMatch = guess.toLowerCase() === room.secretWord.toLowerCase();
 
           const questionItem: QuestionItem = {
             id: 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
             playerId: player.id,
             playerName: player.name,
             playerAvatar: player.avatar,
-            questionText: `🎯 回答コール：「${guess}」ですか？`,
-            answer: isMatch ? 'CORRECT' : 'NO',
-            timestamp: Date.now(),
-            isGuesser: isMatch
+            questionText: `🎯 お題コール：「${guess}」ですか？${isExactMatch ? '（※お題と完全一致）' : ''}`,
+            answer: undefined, // Master will judge!
+            isCall: true,
+            timestamp: Date.now()
           };
 
           room.questions.push(questionItem);
+          addSystemChat(room, `🎯 ${player.name} がお題コール「${guess}」を宣言しました！マスターは判定してください。`);
+          broadcastRoomState(room);
+          break;
+        }
 
-          if (isMatch) {
-            room.guesserId = player.id;
-            stopRoomTimer(room);
-            room.phase = 'DISCUSSION';
-            addSystemChat(room, `🎉 見事正解！正解者は【${player.name}】さんです！お題は「${room.secretWord}」でした！`);
-            addSystemChat(room, `🕵️‍♂️ これより議論タイムです！誰がインサイダーか怪しい発言・誘導を見極めましょう。`);
-            startDiscussionTimer(room);
+        case 'SET_CUSTOM_WORD': {
+          if (!boundRoomCode) return;
+          const room = rooms.get(boundRoomCode);
+          if (!room) return;
+
+          const { word, category, hint } = data;
+          if (word && typeof word === 'string' && word.trim()) {
+            room.customSecretWord = {
+              word: word.trim(),
+              category: (category || 'カスタム').trim(),
+              hint: (hint || '').trim()
+            };
+            addSystemChat(room, `🎯 次の試合のお題「${word.trim()}」が予約されました（ゲーム開始まで秘密です）。`);
+          } else {
+            room.customSecretWord = null;
+            addSystemChat(room, `🎲 お題を通常プールからのランダム設定に戻しました。`);
           }
-
           broadcastRoomState(room);
           break;
         }
@@ -745,37 +771,83 @@ wss.on('connection', (ws: WebSocket) => {
   });
 });
 
-// API endpoint for AI topic generation (optional)
-app.post('/api/ai/generate-words', async (req, res) => {
-  try {
-    const { theme = '面白い日常の物' } = req.body;
-    if (!aiClient) {
-      return res.status(503).json({ error: 'Gemini AI API key not configured' });
-    }
+// Fallback themes when Gemini API is unavailable
+const THEME_FALLBACKS: Record<string, Array<{ word: string; category: string; hint: string; difficulty: 'easy' | 'normal' | 'hard' }>> = {
+  'アニメ': [
+    { word: 'ドラえもん', category: 'アニメ・キャラクター', hint: '未来から来たネコ型ロボット', difficulty: 'easy' },
+    { word: 'ピカチュウ', category: 'アニメ・ゲーム', hint: '黄色い電気ネズミ', difficulty: 'easy' },
+    { word: 'トトロ', category: 'アニメ・映画', hint: '森の主、大きな体の生き物', difficulty: 'easy' },
+    { word: 'ガンダム', category: 'アニメ・ロボット', hint: '白い人型モビルスーツ', difficulty: 'normal' },
+    { word: '孫悟空', category: 'アニメ・漫画', hint: 'かめはめ波を放つサイヤ人', difficulty: 'easy' }
+  ],
+  '学校': [
+    { word: '黒板消し', category: '学校・文房具', hint: 'チョークの粉を拭き取る道具', difficulty: 'easy' },
+    { word: 'ランドセル', category: '学校・鞄', hint: '小学生が背負う四角い鞄', difficulty: 'easy' },
+    { word: '顕微鏡', category: '学校・理科', hint: '微小な世界を拡大して観察する', difficulty: 'normal' },
+    { word: '給食', category: '学校・食事', hint: 'クラスみんなで食べるお昼ご飯', difficulty: 'easy' },
+    { word: '体育館', category: '学校・施設', hint: '屋内で集会や球技を行う場所', difficulty: 'easy' }
+  ],
+  '食べ物': [
+    { word: 'オムライス', category: '食べ物・洋食', hint: 'チキンライスを黄色い卵で包んだ料理', difficulty: 'easy' },
+    { word: 'たこ焼き', category: '食べ物・粉物', hint: '丸い生地にタコが入った大阪名物', difficulty: 'easy' },
+    { word: 'ソフトクリーム', category: 'スイーツ', hint: 'コーンに乗った冷たい渦巻き', difficulty: 'easy' },
+    { word: 'ピザ', category: '食べ物・イタリアン', hint: '丸い生地にチーズをのせて焼いた料理', difficulty: 'easy' },
+    { word: 'メロンパン', category: '食べ物・パン', hint: '格子状の模様がある甘いパン', difficulty: 'easy' }
+  ],
+  'ゲーム': [
+    { word: 'マリオ', category: 'ゲーム・キャラクター', hint: '赤い帽子とヒゲの配管工', difficulty: 'easy' },
+    { word: 'コントローラー', category: 'ゲーム・周辺機器', hint: 'ゲームを操作するための手持ち機器', difficulty: 'easy' },
+    { word: 'モンスターボール', category: 'ゲーム・アイテム', hint: '赤と白の球体でモンスターを捕まえる', difficulty: 'easy' },
+    { word: 'テトリス', category: 'ゲーム・パズル', hint: 'ブロックを敷き詰めて消す名作パズル', difficulty: 'easy' },
+    { word: 'スライム', category: 'ゲーム・モンスター', hint: '水滴型でぷるぷるしたモンスター', difficulty: 'easy' }
+  ]
+};
 
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `あなたはボードゲーム「インサイダーゲーム」のお題作成の達人です。
+// API endpoint for AI topic generation (with robust fallback)
+app.post('/api/ai/generate-words', async (req, res) => {
+  const { theme = '日常の面白い物' } = req.body;
+
+  // Try real Gemini API if client is available
+  if (aiClient) {
+    try {
+      const response = await aiClient.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `あなたはボードゲーム「インサイダーゲーム」のお題作成の達人です。
 テーマ「${theme}」に沿った、インサイダーゲームに最適な日本語のお題を5個作成してください。
 質問（「はい/いいえ」で答えられる）を繰り返すことで徐々に絞り込める、有名かつ少しひねりのある単語がベストです。
-JSON配列形式で返してください。
-キー:
-- word: 単語名（例: "カレーライス"）
-- category: カテゴリ名（例: "食べ物"）
-- hint: 1行ヒント（例: "国民的人気料理"）
-- difficulty: "easy" | "normal" | "hard"
+JSON配列形式のみで返してください。マークダウン装飾なし。
 例: [{"word":"目覚まし時計","category":"日用品","hint":"朝起きるための道具","difficulty":"easy"}]`,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
+        config: {
+          responseMimeType: 'application/json'
+        }
+      });
 
-    const parsed = JSON.parse(response.text || '[]');
-    return res.json({ words: parsed });
-  } catch (err) {
-    console.error('AI word generation error:', err);
-    return res.status(500).json({ error: 'Failed to generate words with AI' });
+      const parsed = JSON.parse(response.text || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return res.json({ words: parsed, source: 'gemini' });
+      }
+    } catch (geminiErr) {
+      console.warn('Gemini generateContent error, using smart fallback:', geminiErr);
+    }
   }
+
+  // Fallback: match theme keywords or select 5 smart theme words
+  const themeLower = theme.toLowerCase();
+  const matchedKey = Object.keys(THEME_FALLBACKS).find(k => themeLower.includes(k.toLowerCase()));
+  let words = matchedKey ? THEME_FALLBACKS[matchedKey] : null;
+
+  if (!words) {
+    // Generate 5 themed words using curated bank with the requested theme
+    words = [
+      { word: `${theme}の代表例`, category: theme, hint: `${theme}といえば誰もが思い浮かべる定番`, difficulty: 'easy' },
+      { word: 'スマートフォン', category: '電子機器・日用品', hint: '現代人の必需品', difficulty: 'easy' },
+      { word: '富士山', category: '名所・自然', hint: '日本一高い山', difficulty: 'easy' },
+      { word: 'タイムカプセル', category: '記念・思い出', hint: '未来に向けて埋める箱', difficulty: 'normal' },
+      { word: '万華鏡', category: '道具・雑貨', hint: '覗くと幾何学模様が美しく変わる', difficulty: 'normal' }
+    ];
+  }
+
+  return res.json({ words, source: 'fallback' });
 });
 
 // Mount Vite or static files
