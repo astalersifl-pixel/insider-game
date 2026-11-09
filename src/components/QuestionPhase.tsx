@@ -239,7 +239,15 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
                   </div>
 
                   {/* Row 2: Question text (Prominent and clear) */}
-                  <div className="py-1 px-1 text-slate-100 font-semibold text-sm sm:text-base leading-relaxed">
+                  {q.isCall && (
+                    <div className="mb-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                      <Target className="w-3.5 h-3.5 text-amber-400" />
+                      お題回答コール
+                    </div>
+                  )}
+                  <div className={`py-1 px-1 font-semibold text-sm sm:text-base leading-relaxed ${
+                    q.isCall ? 'text-amber-200 font-bold' : 'text-slate-100'
+                  }`}>
                     {q.questionText}
                   </div>
 
@@ -248,7 +256,9 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
                     <div className="mt-3 pt-2.5 border-t border-slate-800 space-y-2">
                       <div className="text-[11px] font-bold text-amber-400 flex items-center gap-1.5">
                         <Crown className="w-3.5 h-3.5" />
-                        マスターの判定を選択してください:
+                        {q.isCall
+                          ? '🎯【回答コール判定】正解なら「正解！🎉」、違えば「いいえ」「おしい」を選択してください:'
+                          : 'マスターの判定を選択してください:'}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         <button
