@@ -399,11 +399,15 @@ wss.on('connection', (ws: WebSocket) => {
           let player = room.players.get(assignedId);
 
           if (player) {
-            // Reconnecting player
+            // Reconnecting player: restore socket and mark online
+            const wasDisconnected = !player.ws;
             player.ws = ws;
             player.name = playerName || player.name;
             player.avatar = avatar || player.avatar;
             player.lastSeen = Date.now();
+            if (wasDisconnected) {
+              addSystemChat(room, `🔄 ${player.name} が再接続しました。`);
+            }
           } else {
             // New player
             player = {
@@ -417,8 +421,8 @@ wss.on('connection', (ws: WebSocket) => {
               lastSeen: Date.now()
             };
             room.players.set(assignedId, player);
+            addSystemChat(room, `👋 ${player.name} が参加しました。`);
           }
-          addSystemChat(room, `👋 ${player.name} が参加しました。`);
 
           broadcastRoomState(room);
           break;
@@ -733,17 +737,7 @@ wss.on('connection', (ws: WebSocket) => {
         if (player) {
           player.ws = undefined;
           player.lastSeen = Date.now();
-          // If in lobby and player disconnects, remove them after timeout
-          if (room.phase === 'LOBBY') {
-            room.players.delete(boundPlayerId);
-            // If host left, assign new host
-            if (player.isHost) {
-              const remaining = Array.from(room.players.values()).filter(p => !p.isBot);
-              if (remaining.length > 0) {
-                remaining[0].isHost = true;
-              }
-            }
-          }
+          // Preserve player slot so they can reconnect/resume seamlessly even if mobile screen locks
           broadcastRoomState(room);
         }
       }
