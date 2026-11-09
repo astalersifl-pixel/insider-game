@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Eye, Copy, Check, Volume2, VolumeX, HelpCircle, ExternalLink, Wifi, WifiOff } from 'lucide-react';
+import { Eye, Copy, Check, Volume2, VolumeX, HelpCircle, ExternalLink, Wifi, WifiOff, RotateCcw, LogOut } from 'lucide-react';
 import { soundEffects, toggleMute, getIsMuted } from '../utils/audio.ts';
+import { socketService } from '../services/socket.ts';
 
 interface HeaderProps {
   roomCode: string;
   connectionStatus: 'connecting' | 'connected' | 'disconnected';
   onOpenRules: () => void;
+  onLeaveRoom?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ roomCode, connectionStatus, onOpenRules }) => {
+export const Header: React.FC<HeaderProps> = ({ roomCode, connectionStatus, onOpenRules, onLeaveRoom }) => {
   const [copied, setCopied] = useState(false);
   const [isMuted, setIsMuted] = useState(getIsMuted());
 
@@ -120,9 +122,24 @@ export const Header: React.FC<HeaderProps> = ({ roomCode, connectionStatus, onOp
             <span className="hidden sm:inline">遊び方</span>
           </button>
 
+          {/* Reconnect button if disconnected */}
+          {connectionStatus !== 'connected' && (
+            <button
+              onClick={() => {
+                soundEffects.click();
+                socketService.reconnect();
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold animate-pulse hover:bg-rose-500/30 transition cursor-pointer"
+              title="サーバーに再接続する"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>再接続</span>
+            </button>
+          )}
+
           {/* Connection status */}
           <div
-            title={`接続状態: ${connectionStatus}`}
+            title={`接続状態: ${connectionStatus === 'connected' ? '接続中' : '切断中'}`}
             className="flex items-center gap-1 text-xs px-2 py-1 rounded-xl bg-slate-950 border border-slate-800"
           >
             {connectionStatus === 'connected' ? (
@@ -131,6 +148,21 @@ export const Header: React.FC<HeaderProps> = ({ roomCode, connectionStatus, onOp
               <WifiOff className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
             )}
           </div>
+
+          {/* Leave room button */}
+          {roomCode && onLeaveRoom && (
+            <button
+              onClick={() => {
+                soundEffects.click();
+                onLeaveRoom();
+              }}
+              className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-700/80 hover:border-rose-500/30 text-xs font-medium transition flex items-center gap-1 cursor-pointer"
+              title="部屋を退出してロビーに戻る"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">退出</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
