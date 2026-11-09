@@ -39,7 +39,7 @@ export default function App() {
   const [inputRoomCode, setInputRoomCode] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      return (params.get('room') || '').toUpperCase().slice(0, 4);
+      return (params.get('room') || '').replace(/[^0-9]/g, '').slice(0, 3);
     }
     return '';
   });
@@ -55,9 +55,9 @@ export default function App() {
 
     // Auto-join if room param in URL exists
     const urlParams = new URLSearchParams(window.location.search);
-    const roomFromUrl = urlParams.get('room');
-    if (roomFromUrl && roomFromUrl.length >= 3) {
-      socketService.joinRoom(roomFromUrl.toUpperCase(), playerName, selectedAvatar);
+    const roomFromUrl = urlParams.get('room')?.replace(/[^0-9]/g, '').slice(0, 3);
+    if (roomFromUrl && roomFromUrl.length === 3) {
+      socketService.joinRoom(roomFromUrl, playerName, selectedAvatar);
     }
 
     return () => {
@@ -75,31 +75,24 @@ export default function App() {
 
   const handleCreateRoom = () => {
     soundEffects.click();
-    // Generate a random 4-character room code
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    // Generate a 3-digit numeric room code (100 - 999)
+    const code = Math.floor(100 + Math.random() * 900).toString();
     handleSaveProfile(playerName, selectedAvatar);
     socketService.joinRoom(code, playerName, selectedAvatar);
   };
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputRoomCode.trim()) return;
+    const cleanCode = inputRoomCode.replace(/[^0-9]/g, '').slice(0, 3);
+    if (cleanCode.length !== 3) return;
     soundEffects.click();
     handleSaveProfile(playerName, selectedAvatar);
-    socketService.joinRoom(inputRoomCode.toUpperCase().trim(), playerName, selectedAvatar);
+    socketService.joinRoom(cleanCode, playerName, selectedAvatar);
   };
 
   const handleInstantSoloTest = () => {
     soundEffects.click();
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    const code = Math.floor(100 + Math.random() * 900).toString();
     handleSaveProfile(playerName, selectedAvatar);
     socketService.joinRoom(code, playerName, selectedAvatar);
 
@@ -195,17 +188,19 @@ export default function App() {
               {/* Join Form */}
               <form onSubmit={handleJoinRoom} className="flex gap-2">
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={inputRoomCode}
-                  maxLength={4}
-                  onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
-                  placeholder="ルームコード (4文字)"
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-center font-mono font-bold tracking-widest text-white uppercase placeholder:font-sans placeholder:tracking-normal placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                  maxLength={3}
+                  onChange={(e) => setInputRoomCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                  placeholder="3桁の数字 (例: 123)"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-base text-center font-mono font-bold tracking-widest text-white placeholder:font-sans placeholder:tracking-normal placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
                 />
                 <button
                   type="submit"
-                  disabled={inputRoomCode.length < 3}
-                  className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-bold text-sm border border-slate-700 transition flex items-center gap-1.5 shrink-0"
+                  disabled={inputRoomCode.length !== 3}
+                  className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 disabled:bg-slate-800 disabled:opacity-50 text-white font-bold text-sm border border-purple-500/30 disabled:border-slate-700 transition flex items-center gap-1.5 shrink-0 shadow-lg shadow-purple-600/20 disabled:shadow-none"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>参加</span>
