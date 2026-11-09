@@ -18,7 +18,7 @@ export interface Player {
   role?: Role;
   hasVoted?: boolean;
   votedForId?: string; // only revealed at result
-  score: number;
+  score?: number;
 }
 
 export type QuestionAnswer = 'YES' | 'NO' | 'UNKNOWN' | 'CLOSE' | 'CORRECT';
@@ -32,6 +32,7 @@ export interface QuestionItem {
   answer?: QuestionAnswer;
   timestamp: number;
   isGuesser?: boolean; // if this was the correct guess
+  isCall?: boolean; // if this was a direct word guess attempt
 }
 
 export interface ChatMessage {
@@ -51,6 +52,12 @@ export interface GameSettings {
   allowBots: boolean;
 }
 
+export interface CustomWordData {
+  word: string;
+  category: string;
+  hint: string;
+}
+
 export interface RoomState {
   roomCode: string;
   phase: GamePhase;
@@ -61,11 +68,14 @@ export interface RoomState {
   secretWord: string;
   secretCategory: string;
   secretHint?: string;
+  customSecretWord?: CustomWordData | null;
   guesserId: string | null;
   timeRemaining: number;
   questions: QuestionItem[];
   chatMessages: ChatMessage[];
   winnerTeam: 'COMMONERS' | 'INSIDER' | 'TIME_OVER' | null;
+  accusedPlayerId?: string | null;
+  accusedVoteCount?: number;
   votes: Record<string, string>; // voterId -> targetPlayerId
   roundNumber: number;
 }
@@ -81,11 +91,14 @@ export interface ClientGameState {
   currentMasterId: string | null;
   secretWord: string | null; // null for Commoners during question phase
   secretCategory: string;
+  customSecretWord?: CustomWordData | null;
   guesserId: string | null;
   timeRemaining: number;
   questions: QuestionItem[];
   chatMessages: ChatMessage[];
   winnerTeam: 'COMMONERS' | 'INSIDER' | 'TIME_OVER' | null;
+  accusedPlayerId?: string | null;
+  accusedVoteCount?: number;
   votes: Record<string, string> | null; // only visible in result
   roundNumber: number;
 }
