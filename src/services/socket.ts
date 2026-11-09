@@ -28,7 +28,43 @@ class SocketService {
         savedId = 'p_' + Math.random().toString(36).substring(2, 9);
         localStorage.setItem('insider_player_id', savedId);
       }
+      const savedRoom = localStorage.getItem('insider_last_room');
+      const savedName = localStorage.getItem('insider_player_name');
+      const savedAvatar = localStorage.getItem('insider_player_avatar');
+      if (savedRoom && savedName && savedAvatar) {
+        this.lastJoinParams = {
+          roomCode: savedRoom,
+          playerName: savedName,
+          avatar: savedAvatar,
+          playerId: savedId
+        };
+      }
     }
+  }
+
+  public getLastRoomCode(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('insider_last_room');
+  }
+
+  public leaveRoom(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('insider_last_room');
+    }
+    this.lastJoinParams = null;
+    this.currentState = null;
+    this.notifyStateListeners(null as unknown as ClientGameState);
+  }
+
+  public reconnect(): void {
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        // ignore
+      }
+    }
+    this.connect();
   }
 
   public getPlayerId(): string {
@@ -158,6 +194,11 @@ class SocketService {
   public joinRoom(roomCode: string, playerName: string, avatar: string) {
     const playerId = this.getPlayerId();
     this.lastJoinParams = { roomCode, playerName, avatar, playerId };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('insider_last_room', roomCode);
+      localStorage.setItem('insider_player_name', playerName);
+      localStorage.setItem('insider_player_avatar', avatar);
+    }
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       this.connect();
     } else {
