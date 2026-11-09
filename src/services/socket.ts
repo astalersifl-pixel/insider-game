@@ -248,6 +248,10 @@ class SocketService {
     this.send({ type: 'ANSWER_QUESTION', questionId, answer });
   }
 
+  public setCustomWord(word: string, category?: string, hint?: string) {
+    this.send({ type: 'SET_CUSTOM_WORD', word, category, hint });
+  }
+
   public directGuess(guessText: string) {
     this.send({ type: 'DIRECT_GUESS', guessText });
   }
