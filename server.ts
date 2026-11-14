@@ -763,6 +763,39 @@ wss.on('connection', (ws: WebSocket) => {
           break;
         }
 
+        case 'LEAVE_ROOM': {
+          if (!boundRoomCode || !boundPlayerId) return;
+          const room = rooms.get(boundRoomCode);
+          const leavingId = boundPlayerId;
+          boundRoomCode = null;
+          boundPlayerId = null;
+
+          if (room) {
+            const leavingPlayer = room.players.get(leavingId);
+            room.players.delete(leavingId);
+
+            if (room.settings.selectedMasterId === leavingId) {
+              room.settings.selectedMasterId = null;
+            }
+
+            const remainingHumans = Array.from(room.players.values()).filter(p => !p.isBot);
+            if (remainingHumans.length === 0) {
+              stopRoomTimer(room);
+              rooms.delete(room.roomCode);
+            } else {
+              if (leavingPlayer?.isHost) {
+                remainingHumans[0].isHost = true;
+                addSystemChat(room, `👑 ${remainingHumans[0].name} が新しいホストになりました。`);
+              }
+              if (leavingPlayer) {
+                addSystemChat(room, `👋 ${leavingPlayer.name} が退出しました。`);
+              }
+              broadcastRoomState(room);
+            }
+          }
+          break;
+        }
+
         default:
           break;
       }
