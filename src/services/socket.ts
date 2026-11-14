@@ -20,24 +20,27 @@ class SocketService {
     playerId: string;
   } | null = null;
 
+  private isGuestTab(): boolean {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('guest') === '1';
+  }
+
   constructor() {
-    // Save/retrieve player ID from localStorage for seamless reconnections
+    // Save/retrieve player ID from localStorage (or sessionStorage for multi-tab testing)
     if (typeof window !== 'undefined') {
-      let savedId = localStorage.getItem('insider_player_id');
-      if (!savedId) {
-        savedId = 'p_' + Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('insider_player_id', savedId);
-      }
-      const savedRoom = localStorage.getItem('insider_last_room');
-      const savedName = localStorage.getItem('insider_player_name');
-      const savedAvatar = localStorage.getItem('insider_player_avatar');
-      if (savedRoom && savedName && savedAvatar) {
-        this.lastJoinParams = {
-          roomCode: savedRoom,
-          playerName: savedName,
-          avatar: savedAvatar,
-          playerId: savedId
-        };
+      const savedId = this.getPlayerId();
+      if (!this.isGuestTab()) {
+        const savedRoom = localStorage.getItem('insider_last_room');
+        const savedName = localStorage.getItem('insider_player_name');
+        const savedAvatar = localStorage.getItem('insider_player_avatar');
+        if (savedRoom && savedName && savedAvatar) {
+          this.lastJoinParams = {
+            roomCode: savedRoom,
+            playerName: savedName,
+            avatar: savedAvatar,
+            playerId: savedId
+          };
+        }
       }
     }
   }
@@ -77,10 +80,11 @@ class SocketService {
 
   public getPlayerId(): string {
     if (typeof window === 'undefined') return 'p_temp';
-    let id = localStorage.getItem('insider_player_id');
+    const storage = this.isGuestTab() ? sessionStorage : localStorage;
+    let id = storage.getItem('insider_player_id');
     if (!id) {
       id = 'p_' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('insider_player_id', id);
+      storage.setItem('insider_player_id', id);
     }
     return id;
   }
@@ -207,8 +211,12 @@ class SocketService {
 
   public joinRoom(roomCode: string, playerName: string, avatar: string) {
     const playerId = this.getPlayerId();
-    this.lastJoinParams = { roomCode, playerName, avatar, playerId };
-    if (typeof window !== 'undefined') {
+    const effectiveName =
+      this.isGuestTab() && playerName === localStorage.getItem('insider_player_name')
+        ? `${playerName}(別タブ)`
+        : playerName;
+    this.lastJoinParams = { roomCode, playerName: effectiveName, avatar, playerId };
+    if (typeof window !== 'undefined' && !this.isGuestTab()) {
       localStorage.setItem('insider_last_room', roomCode);
       localStorage.setItem('insider_player_name', playerName);
       localStorage.setItem('insider_player_avatar', avatar);
