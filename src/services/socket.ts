@@ -48,8 +48,16 @@ class SocketService {
   }
 
   public leaveRoom(): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send({ type: 'LEAVE_ROOM' });
+    }
     if (typeof window !== 'undefined') {
       localStorage.removeItem('insider_last_room');
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('room')) {
+        url.searchParams.delete('room');
+        window.history.replaceState({}, '', url.toString());
+      }
     }
     this.lastJoinParams = null;
     this.currentState = null;
@@ -117,6 +125,12 @@ class SocketService {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'GAME_STATE') {
+            if (
+              !this.lastJoinParams ||
+              data.state?.roomCode !== this.lastJoinParams.roomCode.toUpperCase().trim()
+            ) {
+              return;
+            }
             this.currentState = data.state;
             this.notifyStateListeners(data.state);
           }
