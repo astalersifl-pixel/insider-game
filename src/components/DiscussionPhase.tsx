@@ -46,19 +46,19 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
   const timeFormatted = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-3 animate-fade-in">
+    <div className="w-full max-w-2xl mx-auto space-y-3 animate-fade-in min-w-0">
       {/* Compact Header: Secret Word & Timer */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-lg space-y-2.5">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-lg space-y-2.5 min-w-0">
+        <div className="flex items-center justify-between gap-2 flex-wrap min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0">
               <CheckCircle2 className="w-4 h-4" />
             </span>
-            <div>
+            <div className="min-w-0">
               <div className="text-[10px] text-slate-400">正解のお題</div>
-              <div className="text-base sm:text-lg font-black text-amber-300">
+              <div className="text-base sm:text-lg font-black text-amber-300 break-words [overflow-wrap:anywhere]">
                 「{state.secretWord}」
-                <span className="text-xs text-slate-400 font-normal ml-2">
+                <span className="text-xs text-slate-400 font-normal ml-2 inline-block">
                   (正解者: {guesser?.name || '回答者'})
                 </span>
               </div>
@@ -116,7 +116,7 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
 
       {/* Tab 1: Compact Questions Log */}
       {activeTab === 'log' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 space-y-2 shadow-lg animate-fade-in">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 space-y-2 shadow-lg animate-fade-in min-w-0 overflow-hidden">
           <div className="h-[250px] sm:h-[300px] overflow-y-auto space-y-2 pr-1">
             {state.questions.length === 0 ? (
               <div className="text-center py-10 text-slate-500 text-xs">質問ログはありません</div>
@@ -124,7 +124,7 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
               state.questions.map((q, idx) => (
                 <div
                   key={q.id}
-                  className={`p-2 rounded-xl border text-xs flex items-center justify-between gap-2 ${
+                  className={`p-2.5 rounded-xl border text-xs flex items-start justify-between gap-2 min-w-0 ${
                     q.answer === 'CORRECT'
                       ? 'bg-amber-950/40 border-amber-500/50'
                       : q.isCall
@@ -132,11 +132,13 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
                       : 'bg-slate-950/60 border-slate-800/80'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-slate-500 font-mono text-[10px] shrink-0">#{idx + 1}</span>
-                    <span className="text-sm shrink-0">{q.playerAvatar}</span>
-                    <span className="font-bold text-slate-300 shrink-0">{q.playerName}:</span>
-                    <span className="text-white truncate">{q.questionText}</span>
+                  <div className="flex-1 min-w-0 flex items-start gap-1.5">
+                    <span className="text-slate-500 font-mono text-[10px] shrink-0 mt-0.5">#{idx + 1}</span>
+                    <span className="text-sm shrink-0 leading-none mt-0.5">{q.playerAvatar}</span>
+                    <div className="min-w-0 flex-1 break-words [overflow-wrap:anywhere] leading-snug">
+                      <span className="font-bold text-slate-300 mr-1">{q.playerName}:</span>
+                      <span className="text-white">{q.questionText}</span>
+                    </div>
                   </div>
                   <div className="shrink-0">
                     {q.answer === 'YES' && (
@@ -177,12 +179,12 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
 
       {/* Tab 2: Compact Discussion Chat */}
       {activeTab === 'chat' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 space-y-2.5 shadow-lg animate-fade-in flex flex-col h-[320px]">
-          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 text-xs">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 space-y-2.5 shadow-lg animate-fade-in flex flex-col h-[320px] min-w-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 text-xs min-w-0">
             {state.chatMessages.map((msg) => (
               <div
                 key={msg.id}
-                className={`p-2 rounded-xl ${
+                className={`p-2 rounded-xl break-words [overflow-wrap:anywhere] ${
                   msg.isSystem
                     ? 'bg-slate-950 text-slate-400 text-[10px] border border-slate-800'
                     : 'bg-slate-950/80 border border-slate-800/80 text-slate-200'
@@ -191,7 +193,7 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
                 {!msg.isSystem && (
                   <div className="flex items-center gap-1.5 font-bold text-slate-300 text-[11px] mb-0.5">
                     <span>{msg.senderAvatar}</span>
-                    <span>{msg.senderName}</span>
+                    <span className="truncate">{msg.senderName}</span>
                   </div>
                 )}
                 <div>{msg.text}</div>
@@ -199,13 +201,13 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
             ))}
           </div>
 
-          <form onSubmit={handleSendChat} className="pt-2 border-t border-slate-800 flex gap-2">
+          <form onSubmit={handleSendChat} className="pt-2 border-t border-slate-800 flex gap-2 min-w-0">
             <input
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="怪しい人を指摘・弁明する..."
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+              className="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
             />
             <button
               type="submit"
