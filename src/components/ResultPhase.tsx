@@ -14,7 +14,8 @@ import {
   Vote,
   Clock,
   Check,
-  X
+  X,
+  Shuffle
 } from 'lucide-react';
 import { ClientGameState } from '../types/game.ts';
 import { socketService } from '../services/socket.ts';
@@ -378,7 +379,15 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>次のラウンドを開始（マスター交代）</span>
+              <span>
+                次のラウンドを開始（
+                {state.settings.masterSelectionMode === 'manual'
+                  ? `マスター: ${
+                      state.players.find((p) => p.id === state.settings.selectedMasterId)?.name || '指定'
+                    }`
+                  : 'マスターランダム'}
+                ）
+              </span>
             </button>
           )}
         </div>
@@ -402,6 +411,99 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
             </div>
 
             <div className="space-y-4 text-xs">
+              {/* Master Selection Mode */}
+              {(() => {
+                const masterMode = state.settings.masterSelectionMode || 'random';
+                const humanPlayers = state.players.filter((p) => !p.isBot);
+
+                return (
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                    <label className="text-slate-200 font-bold flex items-center gap-1.5">
+                      <Crown className="w-4 h-4 text-amber-400" />
+                      次のマスターの決め方
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundEffects.click();
+                          socketService.updateSettings({
+                            masterSelectionMode: 'random',
+                            selectedMasterId: null
+                          });
+                        }}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          masterMode === 'random'
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <Shuffle className="w-3.5 h-3.5" />
+                        <span>ランダム</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundEffects.click();
+                          const defaultId =
+                            state.settings.selectedMasterId &&
+                            state.players.some((p) => p.id === state.settings.selectedMasterId && !p.isBot)
+                              ? state.settings.selectedMasterId
+                              : humanPlayers[0]?.id || state.players[0]?.id || null;
+                          socketService.updateSettings({
+                            masterSelectionMode: 'manual',
+                            selectedMasterId: defaultId
+                          });
+                        }}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          masterMode === 'manual'
+                            ? 'bg-amber-600 text-white shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <Crown className="w-3.5 h-3.5" />
+                        <span>自分たちで選ぶ</span>
+                      </button>
+                    </div>
+
+                    {masterMode === 'manual' && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="text-[11px] text-amber-300/90">
+                          次のマスターにするプレイヤーを選択してください:
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {humanPlayers.map((p) => {
+                            const isChosen = state.settings.selectedMasterId === p.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.click();
+                                  socketService.updateSettings({
+                                    masterSelectionMode: 'manual',
+                                    selectedMasterId: p.id
+                                  });
+                                }}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                  isChosen
+                                    ? 'bg-amber-500/20 border-amber-400 text-amber-200 ring-1 ring-amber-400/50'
+                                    : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300'
+                                }`}
+                              >
+                                <span>{p.avatar}</span>
+                                <span>{p.name}</span>
+                                {isChosen && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Question Time */}
               <div>
                 <label className="text-slate-300 block mb-1 font-medium">質問タイム（制限時間）</label>
