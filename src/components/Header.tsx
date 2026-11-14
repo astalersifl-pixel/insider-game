@@ -36,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({ roomCode, connectionStatus, onOp
     soundEffects.click();
     const url = new URL(window.location.href);
     url.searchParams.set('room', roomCode);
+    url.searchParams.set('guest', '1');
     window.open(url.toString(), '_blank');
   };
 
