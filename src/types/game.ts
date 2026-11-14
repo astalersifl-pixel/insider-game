@@ -50,6 +50,8 @@ export interface GameSettings {
   discussionTimeSeconds: number; // default: 180 (3 min)
   topicCategory: string; // 'all' | 'easy' | 'normal' | 'hard' | 'custom'
   allowBots: boolean;
+  masterSelectionMode: 'random' | 'manual';
+  selectedMasterId?: string | null;
 }
 
 export interface CustomWordData {
