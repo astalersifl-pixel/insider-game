@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import crypto from 'crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -77,6 +78,9 @@ interface ServerRoom {
   accusedVoteCount?: number;
   votes: Record<string, string>; // voterId -> targetPlayerId
   roundNumber: number;
+  roleCounts: Record<string, { master: number; insider: number }>;
+  lastMasterId: string | null;
+  lastInsiderId: string | null;
 }
 
 const rooms = new Map<string, ServerRoom>();
@@ -118,7 +122,10 @@ function getOrCreateRoom(roomCode: string): ServerRoom {
       accusedPlayerId: null,
       accusedVoteCount: 0,
       votes: {},
-      roundNumber: 1
+      roundNumber: 1,
+      roleCounts: {},
+      lastMasterId: null,
+      lastInsiderId: null
     };
     rooms.set(code, room);
   }
@@ -292,6 +299,46 @@ function simulateBotQuestion(room: ServerRoom) {
   addSystemChat(room, `💬 ${randomBot.name}: 「${qText}」`);
 }
 
+function shuffleCrypto<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function pickFairRandom<T extends { id: string }>(
+  candidates: T[],
+  roleCounts: Record<string, { master: number; insider: number }>,
+  roleKey: 'master' | 'insider',
+  lastRolePlayerId: string | null
+): T {
+  const shuffled = shuffleCrypto(candidates);
+  if (shuffled.length <= 1) return shuffled[0];
+
+  const minCount = Math.min(...shuffled.map(p => roleCounts[p.id]?.[roleKey] ?? 0));
+  const weights = shuffled.map(p => {
+    const count = roleCounts[p.id]?.[roleKey] ?? 0;
+    const diff = count - minCount;
+    let weight = Math.max(12, Math.round(100 / Math.pow(3, diff)));
+    if (p.id === lastRolePlayerId) {
+      weight = Math.max(6, Math.round(weight * (shuffled.length >= 3 ? 0.15 : 0.25)));
+    }
+    return weight;
+  });
+
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  let roll = crypto.randomInt(0, totalWeight);
+  for (let i = 0; i < shuffled.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) {
+      return shuffled[i];
+    }
+  }
+  return shuffled[shuffled.length - 1];
+}
+
 // Start Game flow
 function startGameRound(room: ServerRoom) {
   stopRoomTimer(room);
@@ -303,9 +350,19 @@ function startGameRound(room: ServerRoom) {
     return;
   }
 
-  // Pick Master (manual selection or random)
-  const humanPlayers = playerArray.filter(p => !p.isBot);
-  const masterCandidates = humanPlayers.length > 0 ? humanPlayers : playerArray;
+  const isOnline = (p: Player & { ws?: WebSocket }) =>
+    !!p.isBot || (!!p.ws && p.ws.readyState === WebSocket.OPEN);
+
+  // Pick Master (manual selection or fair cryptographic random among active human players)
+  const onlineHumans = playerArray.filter(p => !p.isBot && isOnline(p));
+  const allHumans = playerArray.filter(p => !p.isBot);
+  const masterCandidates =
+    onlineHumans.length > 0
+      ? onlineHumans
+      : allHumans.length > 0
+      ? allHumans
+      : playerArray;
+
   let master: (Player & { ws?: WebSocket; lastSeen: number }) | undefined;
 
   if (
@@ -317,14 +374,22 @@ function startGameRound(room: ServerRoom) {
   }
 
   if (!master) {
-    master = masterCandidates[Math.floor(Math.random() * masterCandidates.length)];
+    master = pickFairRandom(masterCandidates, room.roleCounts, 'master', room.lastMasterId);
   }
   room.currentMasterId = master.id;
+  room.lastMasterId = master.id;
+  if (!room.roleCounts[master.id]) room.roleCounts[master.id] = { master: 0, insider: 0 };
+  room.roleCounts[master.id].master += 1;
 
-  // Pick Insider from remaining players
-  const nonMasterPlayers = playerArray.filter(p => p.id !== master.id);
-  const insider = nonMasterPlayers[Math.floor(Math.random() * nonMasterPlayers.length)];
+  // Pick Insider from remaining active players (fair cryptographic random)
+  const onlineNonMaster = playerArray.filter(p => p.id !== master!.id && isOnline(p));
+  const allNonMaster = playerArray.filter(p => p.id !== master!.id);
+  const insiderCandidates = onlineNonMaster.length > 0 ? onlineNonMaster : allNonMaster;
+  const insider = pickFairRandom(insiderCandidates, room.roleCounts, 'insider', room.lastInsiderId);
   room.currentInsiderId = insider.id;
+  room.lastInsiderId = insider.id;
+  if (!room.roleCounts[insider.id]) room.roleCounts[insider.id] = { master: 0, insider: 0 };
+  room.roleCounts[insider.id].insider += 1;
 
   // Assign roles
   for (const p of playerArray) {
