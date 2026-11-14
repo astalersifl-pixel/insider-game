@@ -179,7 +179,7 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
               return (
                 <div
                   key={q.id}
-                  className={`p-3.5 sm:p-4 rounded-2xl border transition-all min-w-0 overflow-hidden ${
+                  className={`p-3 sm:p-3.5 rounded-xl border transition-all min-w-0 overflow-hidden ${
                     isCorrect
                       ? 'bg-amber-950/40 border-amber-500/60 shadow-lg shadow-amber-950/50'
                       : isPending
@@ -188,7 +188,7 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
                   }`}
                 >
                   {/* Row 1: Player Avatar & Name & Timestamp */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2 mb-2.5 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-1.5 mb-2 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xl shrink-0">{q.playerAvatar}</span>
                       <span className="text-xs font-bold text-slate-200 truncate max-w-[140px] sm:max-w-none">{q.playerName}</span>
@@ -246,47 +246,49 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
                     {q.questionText}
                   </div>
 
-                  {/* Row 3: Master Action Buttons (Placed directly UNDER the question) */}
+                  {/* Row 3: Master Action Buttons (Compact single-row bar directly under the question) */}
                   {isMaster && !q.answer && (
-                    <div className="mt-3 pt-2.5 border-t border-slate-800 space-y-2">
-                      <div className="text-[11px] font-bold text-amber-400 flex items-start gap-1.5 leading-snug">
-                        <Crown className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        <span>
-                          {q.isCall
-                            ? '🎯【回答コール判定】正解なら「正解！🎉」、違えば「いいえ」「おしい」を選択してください:'
-                            : 'マスターの判定を選択してください:'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div className="mt-2 pt-2 border-t border-slate-800/80 space-y-1.5">
+                      {q.isCall && (
+                        <div className="text-[11px] font-bold text-amber-400 flex items-center gap-1 leading-tight">
+                          <Crown className="w-3 h-3 shrink-0" />
+                          <span>回答コール判定（正解なら「正解🎉」）</span>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
                         <button
                           onClick={() => handleAnswerQuestion(q.id, 'YES')}
-                          className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="py-1.5 px-1 bg-emerald-600/90 hover:bg-emerald-500 active:scale-95 text-white text-[11px] sm:text-xs font-bold rounded-lg transition flex items-center justify-center gap-0.5 cursor-pointer"
                         >
-                          <Check className="w-4 h-4" /> はい
+                          <Check className="w-3 h-3 hidden sm:inline shrink-0" />
+                          <span>はい</span>
                         </button>
                         <button
                           onClick={() => handleAnswerQuestion(q.id, 'NO')}
-                          className="py-2.5 px-3 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="py-1.5 px-1 bg-rose-600/90 hover:bg-rose-500 active:scale-95 text-white text-[11px] sm:text-xs font-bold rounded-lg transition flex items-center justify-center gap-0.5 cursor-pointer"
                         >
-                          <X className="w-4 h-4" /> いいえ
+                          <X className="w-3 h-3 hidden sm:inline shrink-0" />
+                          <span>いいえ</span>
                         </button>
                         <button
                           onClick={() => handleAnswerQuestion(q.id, 'UNKNOWN')}
-                          className="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition flex items-center justify-center cursor-pointer"
+                          title="わからない / 微妙"
+                          className="py-1.5 px-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 text-[11px] sm:text-xs font-medium rounded-lg border border-slate-700 transition flex items-center justify-center cursor-pointer"
                         >
-                          わからない
+                          <span>不明</span>
                         </button>
                         <button
                           onClick={() => handleAnswerQuestion(q.id, 'CLOSE')}
-                          className="py-2.5 px-2 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                          className="py-1.5 px-1 bg-amber-600/90 hover:bg-amber-500 active:scale-95 text-white text-[11px] sm:text-xs font-bold rounded-lg transition flex items-center justify-center gap-0.5 cursor-pointer"
                         >
-                          <Sparkles className="w-3.5 h-3.5" /> おしい！
+                          <Sparkles className="w-3 h-3 hidden sm:inline shrink-0" />
+                          <span>おしい</span>
                         </button>
                         <button
                           onClick={() => handleAnswerQuestion(q.id, 'CORRECT')}
-                          className="col-span-2 sm:col-span-1 py-2.5 px-3 bg-gradient-to-r from-yellow-400 to-amber-500 active:scale-95 text-slate-950 text-xs font-black rounded-xl transition shadow-md flex items-center justify-center gap-1 cursor-pointer"
+                          className="py-1.5 px-1 bg-gradient-to-r from-yellow-400 to-amber-500 active:scale-95 text-slate-950 text-[11px] sm:text-xs font-black rounded-lg transition shadow-sm flex items-center justify-center cursor-pointer"
                         >
-                          正解！🎉
+                          <span>正解🎉</span>
                         </button>
                       </div>
                     </div>
@@ -359,9 +361,9 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
             </div>
           </div>
         ) : (
-          <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-center gap-2">
-            <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>あなたはマスターです。届いた質問の下にある「はい」「いいえ」ボタンで判定してください。</span>
+          <div className="py-2 px-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-[11px] text-amber-300 flex items-center justify-center gap-1.5">
+            <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>マスターは各質問の下のボタンで判定してください</span>
           </div>
         )}
       </div>
