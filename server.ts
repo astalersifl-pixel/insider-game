@@ -3,7 +3,6 @@ import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
 import {
   GamePhase,
   GameSettings,
@@ -32,7 +31,7 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
-  const { pathname } = new URL(request.url || '', `http://${request.headers.host}`);
+  const { pathname } = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
   if (pathname === '/api/ws' || pathname === '/ws') {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
@@ -40,13 +39,19 @@ server.on('upgrade', (request, socket, head) => {
   }
 });
 
-// Gemini AI client initialization (optional AI features)
-let aiClient: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+async function getAiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
   try {
-    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const { GoogleGenAI } = await import('@google/genai');
+    return new GoogleGenAI({ apiKey });
   } catch (e) {
     console.warn('Gemini AI initialization skipped or failed:', e);
+    return null;
   }
 }
 
@@ -94,7 +99,9 @@ function getOrCreateRoom(roomCode: string): ServerRoom {
         questionTimeSeconds: 300,
         discussionTimeSeconds: 180,
         topicCategory: 'all',
-        allowBots: true
+        allowBots: true,
+        masterSelectionMode: 'random',
+        selectedMasterId: null
       },
       currentMasterId: null,
       currentInsiderId: null,
@@ -296,15 +303,22 @@ function startGameRound(room: ServerRoom) {
     return;
   }
 
-  // Pick Master (rotate or random)
-  let masterIndex = -1;
-  if (room.currentMasterId) {
-    const prevIdx = playerArray.findIndex(p => p.id === room.currentMasterId);
-    masterIndex = (prevIdx + 1) % playerArray.length;
-  } else {
-    masterIndex = Math.floor(Math.random() * playerArray.length);
+  // Pick Master (manual selection or random)
+  const humanPlayers = playerArray.filter(p => !p.isBot);
+  const masterCandidates = humanPlayers.length > 0 ? humanPlayers : playerArray;
+  let master: (Player & { ws?: WebSocket; lastSeen: number }) | undefined;
+
+  if (
+    room.settings.masterSelectionMode === 'manual' &&
+    room.settings.selectedMasterId &&
+    room.players.has(room.settings.selectedMasterId)
+  ) {
+    master = room.players.get(room.settings.selectedMasterId);
   }
-  const master = playerArray[masterIndex];
+
+  if (!master) {
+    master = masterCandidates[Math.floor(Math.random() * masterCandidates.length)];
+  }
   room.currentMasterId = master.id;
 
   // Pick Insider from remaining players
@@ -444,9 +458,11 @@ wss.on('connection', (ws: WebSocket) => {
         }
 
         case 'UPDATE_SETTINGS': {
-          if (!boundRoomCode) return;
+          if (!boundRoomCode || !boundPlayerId) return;
           const room = rooms.get(boundRoomCode);
-          if (!room || room.phase !== 'LOBBY') return;
+          if (!room || (room.phase !== 'LOBBY' && room.phase !== 'RESULT')) return;
+          const sender = room.players.get(boundPlayerId);
+          if (!sender?.isHost) return;
           if (data.settings) {
             room.settings = { ...room.settings, ...data.settings };
             broadcastRoomState(room);
@@ -807,7 +823,8 @@ const THEME_FALLBACKS: Record<string, Array<{ word: string; category: string; hi
 app.post('/api/ai/generate-words', async (req, res) => {
   const { theme = '日常の面白い物' } = req.body;
 
-  // Try real Gemini API if client is available
+  // Try real Gemini API if API key is available
+  const aiClient = await getAiClient();
   if (aiClient) {
     try {
       const response = await aiClient.models.generateContent({
@@ -852,16 +869,33 @@ JSON配列形式のみで返してください。マークダウン装飾なし�
 
 // Mount Vite or static files
 if (process.env.NODE_ENV !== 'production') {
-  const { createServer: createViteServer } = await import('vite');
-  const vite = await createViteServer({
-    server: {
-      middlewareMode: true,
-      hmr: process.env.DISABLE_HMR === 'true' ? false : { server },
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    },
-    appType: 'spa',
+  let viteMiddlewares: express.RequestHandler | null = null;
+  const viteReadyPromise = (async () => {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: {
+          middlewareMode: true,
+          hmr: process.env.DISABLE_HMR === 'true' ? false : { server },
+          watch: process.env.DISABLE_HMR === 'true' ? null : {},
+        },
+        appType: 'spa',
+      });
+      viteMiddlewares = vite.middlewares;
+    } catch (err) {
+      console.error('Failed to initialize Vite dev middleware:', err);
+    }
+  })();
+
+  app.use(async (req, res, next) => {
+    if (!viteMiddlewares) {
+      await viteReadyPromise;
+    }
+    if (viteMiddlewares) {
+      return viteMiddlewares(req, res, next);
+    }
+    next();
   });
-  app.use(vite.middlewares);
 } else {
   app.use(express.static(path.join(__dirname, 'dist')));
   app.get('*', (req, res) => {
