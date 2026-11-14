@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Copy,
   Check,
-  Target
+  Target,
+  Shuffle
 } from 'lucide-react';
 import { ClientGameState } from '../types/game.ts';
 import { socketService } from '../services/socket.ts';
@@ -218,17 +219,154 @@ export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
           </div>
         </div>
 
+        {/* Master Selection Mode Bar */}
+        {(() => {
+          const masterMode = state.settings.masterSelectionMode || 'random';
+          const humanPlayers = state.players.filter((p) => !p.isBot);
+          const selectedMaster = state.players.find((p) => p.id === state.settings.selectedMasterId);
+
+          return (
+            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+                  <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>マスターの決め方</span>
+                </div>
+
+                {isHost ? (
+                  <div className="grid grid-cols-2 gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEffects.click();
+                        socketService.updateSettings({
+                          masterSelectionMode: 'random',
+                          selectedMasterId: null
+                        });
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        masterMode === 'random'
+                          ? 'bg-purple-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Shuffle className="w-3.5 h-3.5" />
+                      <span>ランダム</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEffects.click();
+                        const defaultId =
+                          state.settings.selectedMasterId &&
+                          state.players.some((p) => p.id === state.settings.selectedMasterId && !p.isBot)
+                            ? state.settings.selectedMasterId
+                            : humanPlayers[0]?.id || state.players[0]?.id || null;
+                        socketService.updateSettings({
+                          masterSelectionMode: 'manual',
+                          selectedMasterId: defaultId
+                        });
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        masterMode === 'manual'
+                          ? 'bg-amber-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Crown className="w-3.5 h-3.5" />
+                      <span>自分たちで選ぶ</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-xs font-bold px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1.5">
+                    {masterMode === 'manual' ? (
+                      <>
+                        <Crown className="w-3.5 h-3.5 text-amber-400" />
+                        <span>指定制: {selectedMaster ? `${selectedMaster.name} さん` : '未選択'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Shuffle className="w-3.5 h-3.5 text-purple-400" />
+                        <span>ランダム決定</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {masterMode === 'manual' && (
+                <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                  <div className="text-[11px] text-amber-300/90 font-medium">
+                    {isHost
+                      ? '👇 今回のマスターにするプレイヤーを選択してください（Bot以外）:'
+                      : '👑 今回のマスターに選ばれたプレイヤー:'}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {humanPlayers.map((p) => {
+                      const isChosen = state.settings.selectedMasterId === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          disabled={!isHost}
+                          onClick={() => {
+                            if (!isHost) return;
+                            soundEffects.click();
+                            socketService.updateSettings({
+                              masterSelectionMode: 'manual',
+                              selectedMasterId: p.id
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 ${
+                            isChosen
+                              ? 'bg-amber-500/20 border-amber-400 text-amber-200 ring-1 ring-amber-400/50'
+                              : isHost
+                              ? 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 cursor-pointer'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 cursor-default'
+                          }`}
+                        >
+                          <span>{p.avatar}</span>
+                          <span>{p.name}</span>
+                          {isChosen && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Players Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {state.players.map((player) => {
             const isMe = player.id === state.myPlayerId;
+            const isDesignatedMaster =
+              state.settings.masterSelectionMode === 'manual' &&
+              state.settings.selectedMasterId === player.id;
             return (
               <div
                 key={player.id}
+                onClick={() => {
+                  if (isHost && state.settings.masterSelectionMode === 'manual' && !player.isBot) {
+                    soundEffects.click();
+                    socketService.updateSettings({
+                      masterSelectionMode: 'manual',
+                      selectedMasterId: player.id
+                    });
+                  }
+                }}
                 className={`p-3.5 rounded-xl border flex items-center justify-between transition ${
-                  isMe
+                  isDesignatedMaster
+                    ? 'bg-amber-950/30 border-amber-500/60 shadow-sm'
+                    : isMe
                     ? 'bg-purple-950/30 border-purple-500/40 shadow-sm'
                     : 'bg-slate-950/60 border-slate-800'
+                } ${
+                  isHost && state.settings.masterSelectionMode === 'manual' && !player.isBot
+                    ? 'cursor-pointer hover:border-amber-400/60'
+                    : ''
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -236,13 +374,18 @@ export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
                     {player.avatar}
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-xs sm:text-sm text-white truncate max-w-[120px]">
                         {player.name}
                       </span>
                       {isMe && (
                         <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">
                           あなた
+                        </span>
+                      )}
+                      {isDesignatedMaster && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          次回マスター
                         </span>
                       )}
                     </div>
@@ -269,7 +412,10 @@ export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
                 {/* Host kick bot button */}
                 {isHost && player.isBot && (
                   <button
-                    onClick={() => handleRemoveBot(player.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveBot(player.id);
+                    }}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
                     title="ボットを退出させる"
                   >
@@ -483,9 +629,19 @@ export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
 
         {/* Start Game Action Bar */}
         <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-400 flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-purple-400" />
-            質問時間: {state.settings.questionTimeSeconds / 60}分 / 議論時間: {state.settings.discussionTimeSeconds / 60}分
+          <div className="text-xs text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-purple-400" />
+              質問: {state.settings.questionTimeSeconds / 60}分 / 議論: {state.settings.discussionTimeSeconds / 60}分
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="flex items-center gap-1 text-amber-300/90">
+              <Crown className="w-3.5 h-3.5 text-amber-400" />
+              マスター:{' '}
+              {state.settings.masterSelectionMode === 'manual'
+                ? state.players.find((p) => p.id === state.settings.selectedMasterId)?.name || '手動選択'
+                : 'ランダム'}
+            </span>
           </div>
 
           {isHost ? (
