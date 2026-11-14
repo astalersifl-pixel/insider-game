@@ -291,7 +291,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex-1 p-4 sm:p-6 flex flex-col justify-center">
+      <main className="flex-1 p-4 sm:p-6 flex flex-col justify-center w-full overflow-x-hidden">
         {gameState.phase === 'LOBBY' && <LobbyPhase state={gameState} />}
         {gameState.phase === 'ROLE_REVEAL' && <RevealPhase state={gameState} />}
         {gameState.phase === 'QUESTION' && <QuestionPhase state={gameState} />}
