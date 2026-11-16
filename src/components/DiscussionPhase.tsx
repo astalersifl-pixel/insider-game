@@ -96,6 +96,13 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
         <p className="text-[11px] text-slate-400 leading-tight">
           🕵️‍♂️ <strong className="text-purple-300">インサイダーは誰だ？</strong> 正解を知りながら誘導していた人物を推理しましょう！
         </p>
+
+        {(state.settings.insiderPointsInitial ?? 0) > 0 && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-slate-950/70 border border-purple-500/25 text-[10px] sm:text-[11px] text-slate-300 leading-snug">
+            <span className="text-amber-300 font-bold">減算ルール（初期{state.settings.insiderPointsInitial}pt）:</span>{' '}
+            ①質問3回(-1pt) ／ ②「はい」の質問(-1pt) ／ ③正解を言う(-2pt)
+          </div>
+        )}
       </div>
 
       {/* Tab Switcher: 質問ログ vs チャット */}
