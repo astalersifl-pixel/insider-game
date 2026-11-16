@@ -15,7 +15,8 @@ import {
   Clock,
   Check,
   X,
-  Shuffle
+  Shuffle,
+  Coins
 } from 'lucide-react';
 import { ClientGameState } from '../types/game.ts';
 import { socketService } from '../services/socket.ts';
@@ -328,6 +329,59 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
         </div>
       </div>
 
+      {/* Insider Mission Breakdown (when Insider Points rule is active) */}
+      {(state.settings.insiderPointsInitial ?? 0) > 0 && state.insiderMissionStatus && (
+        <div className="bg-slate-900 border border-purple-500/40 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-bold text-sm text-white flex items-center gap-2">
+              <Coins className="w-4 h-4 text-amber-300" />
+              インサイダーポイント結果
+            </h3>
+            <div className="text-xs font-black px-3 py-1 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/30">
+              残り: {state.insiderMissionStatus.remainingPoints}pt（初期 {state.insiderMissionStatus.initialPoints}pt）
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div
+              className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                state.insiderMissionStatus.askedThreeQuestions
+                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400'
+              }`}
+            >
+              <span>1. 質問を3回 ({state.insiderMissionStatus.questionCount}回)</span>
+              <span className="font-mono font-bold">
+                {state.insiderMissionStatus.askedThreeQuestions ? '-1pt ✓' : '未達成'}
+              </span>
+            </div>
+            <div
+              className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                state.insiderMissionStatus.gotYesAnswer
+                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400'
+              }`}
+            >
+              <span>2. 「はい」の質問</span>
+              <span className="font-mono font-bold">
+                {state.insiderMissionStatus.gotYesAnswer ? '-1pt ✓' : '未達成'}
+              </span>
+            </div>
+            <div
+              className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                state.insiderMissionStatus.guessedCorrectWord
+                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400'
+              }`}
+            >
+              <span>3. 正解を言う</span>
+              <span className="font-mono font-bold">
+                {state.insiderMissionStatus.guessedCorrectWord ? '-2pt ✓' : '未達成'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Custom Secret Word Indicator (if set for next round) */}
       {state.customSecretWord && (
         <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 text-xs flex items-center justify-between gap-2">
@@ -550,6 +604,40 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
                   <option value="easy">初級（日常のモノ・食べ物）</option>
                   <option value="normal">中級（少しひねりのある名詞）</option>
                   <option value="hard">上級（概念・自然現象など）</option>
+                </select>
+              </div>
+
+              {/* Insider Points Rule */}
+              <div>
+                <label className="text-slate-300 block mb-1 font-medium">インサイダーのポイント（ミッション）</label>
+                <select
+                  value={state.settings.insiderPointsInitial ?? 0}
+                  onChange={(e) =>
+                    socketService.updateSettings({ insiderPointsInitial: Number(e.target.value) })
+                  }
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value={5}>5pt（難しい）</option>
+                  <option value={3}>3pt（普通）</option>
+                  <option value={2}>2pt（易しい）</option>
+                  <option value={0}>0pt（フリー・通常ルール）</option>
+                </select>
+              </div>
+
+              {/* Question Order Mode */}
+              <div>
+                <label className="text-slate-300 block mb-1 font-medium">質問の手順</label>
+                <select
+                  value={state.settings.questionOrderMode ?? 'free'}
+                  onChange={(e) =>
+                    socketService.updateSettings({
+                      questionOrderMode: e.target.value as 'free' | 'sequential'
+                    })
+                  }
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value="free">自由（思いついた人がどんどん質問・解答）</option>
+                  <option value="sequential">順番に（ランダム順で1人ずつ質問・解答）</option>
                 </select>
               </div>
 

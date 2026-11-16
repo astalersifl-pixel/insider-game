@@ -89,7 +89,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
               <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center shrink-0">2</span>
               <div>
                 <strong className="text-white block mb-0.5">質問タイム（制限時間あり）</strong>
-                庶民とインサイダーがマスターに質問します（例：「食べ物ですか？」「家の中にありますか？」）。時間内に誰かが正解のお題をコールすれば成功！
+                庶民とインサイダーがマスターに質問します（ルール設定で「自由」またはランダム順の「順番に」を選択可能）。マスターが判定するまで他のプレイヤーには質問内容が伏せられ、誤って答えを書いてしまった場合は本人またはマスターが削除できます。お題が分かったら「お題を当てる！」から直接回答して正解判定を受けましょう！
                 <span className="text-rose-400 block mt-1">※時間切れになると、全員敗北（ゲームオーバー）となります！</span>
               </div>
             </div>
@@ -97,8 +97,8 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex gap-3">
               <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center shrink-0">3</span>
               <div>
-                <strong className="text-white block mb-0.5">議論 ＆ 投票タイム</strong>
-                「正解できたけど、誰がインサイダーだったのか？」を過去の質問ログを見返しながら議論します。「あの質問、急に確信に迫りすぎてない？」と怪しい人物に1人1票を投票！
+                <strong className="text-white block mb-0.5">正解発表 ＆ 議論・投票タイム</strong>
+                正解が出ると全員にお題が発表されます（「インサイダーのポイント」設定時はインサイダーの残り所持ポイントも表示）。全員が「完了」を押したら議論タイムへ進み、怪しい人物に1人1票を投票します！
               </div>
             </div>
           </div>

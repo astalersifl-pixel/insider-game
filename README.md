@@ -56,7 +56,7 @@ Render (https://render.com/) は、Node.js + WebSocket を無料でホスティ�
    - **Region**: `Singapore` または `Tokyo` または `Oregon`
    - **Build Command**:
      ```bash
-     npm install && npm run build
+     npm install --legacy-peer-deps && npm run build
      ```
    - **Start Command**:
      ```bash

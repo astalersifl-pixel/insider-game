@@ -17,6 +17,7 @@ import { Header } from './components/Header.tsx';
 import { LobbyPhase } from './components/LobbyPhase.tsx';
 import { RevealPhase } from './components/RevealPhase.tsx';
 import { QuestionPhase } from './components/QuestionPhase.tsx';
+import { CorrectRevealPhase } from './components/CorrectRevealPhase.tsx';
 import { DiscussionPhase } from './components/DiscussionPhase.tsx';
 import { VotingPhase } from './components/VotingPhase.tsx';
 import { ResultPhase } from './components/ResultPhase.tsx';
@@ -295,6 +296,7 @@ export default function App() {
         {gameState.phase === 'LOBBY' && <LobbyPhase state={gameState} />}
         {gameState.phase === 'ROLE_REVEAL' && <RevealPhase state={gameState} />}
         {gameState.phase === 'QUESTION' && <QuestionPhase state={gameState} />}
+        {gameState.phase === 'CORRECT_REVEAL' && <CorrectRevealPhase state={gameState} />}
         {gameState.phase === 'DISCUSSION' && <DiscussionPhase state={gameState} />}
         {gameState.phase === 'VOTING' && <VotingPhase state={gameState} />}
         {gameState.phase === 'RESULT' && <ResultPhase state={gameState} />}

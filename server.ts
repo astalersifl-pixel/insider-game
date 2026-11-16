@@ -12,7 +12,8 @@ import {
   ChatMessage,
   QuestionAnswer,
   ClientGameState,
-  Role
+  Role,
+  InsiderMissionStatus
 } from './src/types/game.ts';
 import { getRandomWord } from './src/utils/words.ts';
 
@@ -81,6 +82,8 @@ interface ServerRoom {
   roleCounts: Record<string, { master: number; insider: number }>;
   lastMasterId: string | null;
   lastInsiderId: string | null;
+  questionTurnOrder: string[];
+  currentTurnIndex: number;
 }
 
 const rooms = new Map<string, ServerRoom>();
@@ -105,7 +108,9 @@ function getOrCreateRoom(roomCode: string): ServerRoom {
         topicCategory: 'all',
         allowBots: true,
         masterSelectionMode: 'random',
-        selectedMasterId: null
+        selectedMasterId: null,
+        insiderPointsInitial: 0,
+        questionOrderMode: 'free'
       },
       currentMasterId: null,
       currentInsiderId: null,
@@ -125,11 +130,47 @@ function getOrCreateRoom(roomCode: string): ServerRoom {
       roundNumber: 1,
       roleCounts: {},
       lastMasterId: null,
-      lastInsiderId: null
+      lastInsiderId: null,
+      questionTurnOrder: [],
+      currentTurnIndex: 0
     };
     rooms.set(code, room);
   }
   return room;
+}
+
+function getCurrentTurnPlayerId(room: ServerRoom): string | null {
+  if ((room.settings.questionOrderMode ?? 'free') !== 'sequential') return null;
+  if (!room.questionTurnOrder || room.questionTurnOrder.length === 0) return null;
+  const len = room.questionTurnOrder.length;
+  const idx = ((room.currentTurnIndex % len) + len) % len;
+  return room.questionTurnOrder[idx] ?? null;
+}
+
+function computeInsiderMissionStatus(room: ServerRoom): InsiderMissionStatus {
+  const initialPoints = room.settings.insiderPointsInitial ?? 0;
+  const insiderId = room.currentInsiderId;
+  const insiderNormalQuestions = insiderId
+    ? room.questions.filter(q => q.playerId === insiderId && !q.isCall)
+    : [];
+  const questionCount = insiderNormalQuestions.length;
+  const askedThreeQuestions = questionCount >= 3;
+  const gotYesAnswer = insiderNormalQuestions.some(q => q.answer === 'YES');
+  const guessedCorrectWord = !!insiderId && room.guesserId === insiderId;
+
+  let deduction = 0;
+  if (askedThreeQuestions) deduction += 1;
+  if (gotYesAnswer) deduction += 1;
+  if (guessedCorrectWord) deduction += 2;
+
+  return {
+    initialPoints,
+    questionCount,
+    askedThreeQuestions,
+    gotYesAnswer,
+    guessedCorrectWord,
+    remainingPoints: Math.max(0, initialPoints - deduction)
+  };
 }
 
 // Broadcast game state to all players in a room (with secret masking)
@@ -146,18 +187,44 @@ function broadcastRoomState(room: ServerRoom) {
     votedForId: room.phase === 'RESULT' ? room.votes[p.id] : undefined
   }));
 
+  const hasPointsRule = (room.settings.insiderPointsInitial ?? 0) > 0;
+  const missionStatus = hasPointsRule ? computeInsiderMissionStatus(room) : null;
+
   for (const [playerId, player] of room.players.entries()) {
     if (!player.ws || player.ws.readyState !== WebSocket.OPEN) continue;
 
     // Mask secret word according to role and phase
     let secretWordToSend: string | null = null;
-    if (room.phase === 'RESULT' || room.phase === 'DISCUSSION') {
+    if (room.phase === 'RESULT' || room.phase === 'DISCUSSION' || room.phase === 'CORRECT_REVEAL') {
       secretWordToSend = room.secretWord;
     } else if (room.phase === 'QUESTION' || room.phase === 'ROLE_REVEAL' || room.phase === 'VOTING') {
       if (player.role === 'MASTER' || player.role === 'INSIDER') {
         secretWordToSend = room.secretWord;
       }
     }
+
+    // Mask unanswered questions for players other than Master and the question sender
+    const questionsForPlayer = room.questions.map(q => {
+      const canSeePending = q.answer !== undefined || player.role === 'MASTER' || q.playerId === playerId;
+      if (canSeePending) {
+        return q;
+      }
+      return {
+        ...q,
+        questionText: '🔒 マスターの回答待ち（判定後に公開されます）',
+        isMasked: true
+      };
+    });
+
+    const showRemainingPoints =
+      hasPointsRule &&
+      (room.phase === 'CORRECT_REVEAL' ||
+        room.phase === 'DISCUSSION' ||
+        room.phase === 'VOTING' ||
+        room.phase === 'RESULT');
+
+    const showMissionDetails =
+      hasPointsRule && (player.role === 'INSIDER' || room.phase === 'RESULT');
 
     const clientState: ClientGameState = {
       roomCode: room.roomCode,
@@ -178,13 +245,18 @@ function broadcastRoomState(room: ServerRoom) {
         : null,
       guesserId: room.guesserId,
       timeRemaining: room.timeRemaining,
-      questions: room.questions,
+      questions: questionsForPlayer,
       chatMessages: room.chatMessages.slice(-50),
       winnerTeam: room.winnerTeam,
       accusedPlayerId: room.accusedPlayerId,
       accusedVoteCount: room.accusedVoteCount,
       votes: room.phase === 'RESULT' ? room.votes : null,
-      roundNumber: room.roundNumber
+      roundNumber: room.roundNumber,
+      insiderPointsRemaining: showRemainingPoints && missionStatus ? missionStatus.remainingPoints : null,
+      insiderMissionStatus: showMissionDetails ? missionStatus : null,
+      questionTurnOrder:
+        (room.settings.questionOrderMode ?? 'free') === 'sequential' ? room.questionTurnOrder : [],
+      currentTurnPlayerId: getCurrentTurnPlayerId(room)
     };
 
     try {
@@ -277,26 +349,39 @@ const BOT_QUESTIONS = [
 
 function simulateBotQuestion(room: ServerRoom) {
   if (room.phase !== 'QUESTION') return;
-  // 15% chance per 3 seconds for a bot to ask a question if no question is pending
-  if (Math.random() > 0.08) return;
 
-  const bots = Array.from(room.players.values()).filter(p => p.isBot && p.role !== 'MASTER');
-  if (bots.length === 0) return;
+  const isSequential = (room.settings.questionOrderMode ?? 'free') === 'sequential';
+  let chosenBot: (Player & { ws?: WebSocket; lastSeen: number }) | undefined;
 
-  const randomBot = bots[Math.floor(Math.random() * bots.length)];
+  if (isSequential) {
+    // Wait if a question or guess is pending Master's answer
+    if (room.questions.some(q => !q.answer)) return;
+    const turnPlayerId = getCurrentTurnPlayerId(room);
+    const turnPlayer = turnPlayerId ? room.players.get(turnPlayerId) : undefined;
+    if (!turnPlayer || !turnPlayer.isBot) return;
+    if (Math.random() > 0.45) return;
+    chosenBot = turnPlayer;
+  } else {
+    // Free mode: 8% chance per second for a bot to ask a question
+    if (Math.random() > 0.08) return;
+    const bots = Array.from(room.players.values()).filter(p => p.isBot && p.role !== 'MASTER');
+    if (bots.length === 0) return;
+    chosenBot = bots[Math.floor(Math.random() * bots.length)];
+  }
+
   const qText = BOT_QUESTIONS[Math.floor(Math.random() * BOT_QUESTIONS.length)];
 
   const newQ: QuestionItem = {
     id: 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-    playerId: randomBot.id,
-    playerName: randomBot.name,
-    playerAvatar: randomBot.avatar,
+    playerId: chosenBot.id,
+    playerName: chosenBot.name,
+    playerAvatar: chosenBot.avatar,
     questionText: qText,
     timestamp: Date.now()
   };
 
   room.questions.push(newQ);
-  addSystemChat(room, `💬 ${randomBot.name}: 「${qText}」`);
+  broadcastRoomState(room);
 }
 
 function shuffleCrypto<T>(items: T[]): T[] {
@@ -423,6 +508,8 @@ function startGameRound(room: ServerRoom) {
   room.winnerTeam = null;
   room.accusedPlayerId = null;
   room.accusedVoteCount = 0;
+  room.questionTurnOrder = shuffleCrypto(playerArray.filter(p => p.id !== master!.id)).map(p => p.id);
+  room.currentTurnIndex = 0;
   room.phase = 'ROLE_REVEAL';
 
   addSystemChat(room, `🎮 ラウンド ${room.roundNumber} が開始されました！役職とお題を確認してください。`);
@@ -632,7 +719,13 @@ wss.on('connection', (ws: WebSocket) => {
           if (!room || room.phase !== 'QUESTION') return;
 
           const player = room.players.get(boundPlayerId);
-          if (!player) return;
+          if (!player || room.currentMasterId === boundPlayerId) return;
+
+          if ((room.settings.questionOrderMode ?? 'free') === 'sequential') {
+            if (room.questions.some(q => !q.answer)) return;
+            const turnPlayerId = getCurrentTurnPlayerId(room);
+            if (turnPlayerId && boundPlayerId !== turnPlayerId) return;
+          }
 
           const text = (data.questionText || '').trim();
           if (!text) return;
@@ -663,18 +756,86 @@ wss.on('connection', (ws: WebSocket) => {
           const targetQ = room.questions.find(q => q.id === questionId);
           if (!targetQ) return;
 
+          // Only direct guess calls ("お題を当てる！") can be judged CORRECT
+          if (answer === 'CORRECT' && !targetQ.isCall) return;
+          if (targetQ.isCall && answer !== 'CORRECT' && answer !== 'NO' && answer !== 'CLOSE') return;
+
+          const wasUnanswered = targetQ.answer === undefined;
           targetQ.answer = answer;
 
           if (answer === 'CORRECT') {
             targetQ.isGuesser = true;
             room.guesserId = targetQ.playerId;
             stopRoomTimer(room);
-            room.phase = 'DISCUSSION';
-            addSystemChat(room, `🎉 マスターが正解と判定しました！正解者は【${targetQ.playerName}】さんです！お題は「${room.secretWord}」でした！`);
-            addSystemChat(room, `🕵️‍♂️ これより議論タイムです！誰がインサイダーか怪しい発言・誘導を見極めましょう。`);
-            startDiscussionTimer(room);
+            room.phase = 'CORRECT_REVEAL';
+            for (const p of room.players.values()) {
+              p.isReady = p.isBot ? true : false;
+            }
+            addSystemChat(
+              room,
+              `🎉 正解が出ました！正解者は【${targetQ.playerName}】さん、お題は「${room.secretWord}」でした！全員が「完了」を押すと議論に進みます。`
+            );
+          } else if (
+            wasUnanswered &&
+            (room.settings.questionOrderMode ?? 'free') === 'sequential' &&
+            room.questionTurnOrder.length > 0
+          ) {
+            room.currentTurnIndex = (room.currentTurnIndex + 1) % room.questionTurnOrder.length;
           }
 
+          broadcastRoomState(room);
+          break;
+        }
+
+        case 'DELETE_QUESTION': {
+          if (!boundRoomCode || !boundPlayerId) return;
+          const room = rooms.get(boundRoomCode);
+          if (!room || room.phase !== 'QUESTION') return;
+
+          const { questionId } = data as { questionId: string };
+          const targetIndex = room.questions.findIndex(q => q.id === questionId);
+          if (targetIndex === -1) return;
+
+          const targetQ = room.questions[targetIndex];
+          // Only Master or the player who asked the question can delete it (and never delete a winning CORRECT answer)
+          if (targetQ.answer === 'CORRECT') return;
+          if (boundPlayerId !== room.currentMasterId && boundPlayerId !== targetQ.playerId) return;
+
+          room.questions.splice(targetIndex, 1);
+          broadcastRoomState(room);
+          break;
+        }
+
+        case 'SKIP_TURN': {
+          if (!boundRoomCode || !boundPlayerId) return;
+          const room = rooms.get(boundRoomCode);
+          if (!room || room.phase !== 'QUESTION') return;
+          if ((room.settings.questionOrderMode ?? 'free') !== 'sequential') return;
+          if (room.questionTurnOrder.length === 0) return;
+
+          const sender = room.players.get(boundPlayerId);
+          if (boundPlayerId !== room.currentMasterId && !sender?.isHost) return;
+          if (room.questions.some(q => !q.answer)) return;
+
+          room.currentTurnIndex = (room.currentTurnIndex + 1) % room.questionTurnOrder.length;
+          broadcastRoomState(room);
+          break;
+        }
+
+        case 'CONFIRM_CORRECT_REVEAL': {
+          if (!boundRoomCode || !boundPlayerId) return;
+          const room = rooms.get(boundRoomCode);
+          if (!room || room.phase !== 'CORRECT_REVEAL') return;
+
+          const player = room.players.get(boundPlayerId);
+          if (player) player.isReady = true;
+
+          const allReady = Array.from(room.players.values()).every(p => p.isReady);
+          if (allReady) {
+            room.phase = 'DISCUSSION';
+            addSystemChat(room, `🕵️‍♂️ 全員の確認が完了しました！これより議論タイムです。誰がインサイダーか怪しい発言・誘導を見極めましょう。`);
+            startDiscussionTimer(room);
+          }
           broadcastRoomState(room);
           break;
         }
@@ -685,7 +846,13 @@ wss.on('connection', (ws: WebSocket) => {
           if (!room || room.phase !== 'QUESTION') return;
 
           const player = room.players.get(boundPlayerId);
-          if (!player) return;
+          if (!player || room.currentMasterId === boundPlayerId) return;
+
+          if ((room.settings.questionOrderMode ?? 'free') === 'sequential') {
+            if (room.questions.some(q => !q.answer)) return;
+            const turnPlayerId = getCurrentTurnPlayerId(room);
+            if (turnPlayerId && boundPlayerId !== turnPlayerId) return;
+          }
 
           const guess = (data.guessText || '').trim();
           if (!guess) return;
@@ -704,7 +871,7 @@ wss.on('connection', (ws: WebSocket) => {
           };
 
           room.questions.push(questionItem);
-          addSystemChat(room, `🎯 ${player.name} がお題コール「${guess}」を宣言しました！マスターは判定してください。`);
+          addSystemChat(room, `🎯 ${player.name} が「お題を当てる！」で回答しました！マスターは判定してください。`);
           broadcastRoomState(room);
           break;
         }
@@ -843,6 +1010,19 @@ wss.on('connection', (ws: WebSocket) => {
               room.settings.selectedMasterId = null;
             }
 
+            const leaveTurnIdx = room.questionTurnOrder.indexOf(leavingId);
+            if (leaveTurnIdx !== -1) {
+              room.questionTurnOrder.splice(leaveTurnIdx, 1);
+              if (leaveTurnIdx < room.currentTurnIndex) {
+                room.currentTurnIndex = Math.max(0, room.currentTurnIndex - 1);
+              }
+              if (room.questionTurnOrder.length > 0) {
+                room.currentTurnIndex = room.currentTurnIndex % room.questionTurnOrder.length;
+              } else {
+                room.currentTurnIndex = 0;
+              }
+            }
+
             const remainingHumans = Array.from(room.players.values()).filter(p => !p.isBot);
             if (remainingHumans.length === 0) {
               stopRoomTimer(room);
@@ -854,6 +1034,14 @@ wss.on('connection', (ws: WebSocket) => {
               }
               if (leavingPlayer) {
                 addSystemChat(room, `👋 ${leavingPlayer.name} が退出しました。`);
+              }
+              if (
+                room.phase === 'CORRECT_REVEAL' &&
+                Array.from(room.players.values()).every(p => p.isReady)
+              ) {
+                room.phase = 'DISCUSSION';
+                addSystemChat(room, `🕵️‍♂️ 全員の確認が完了しました！これより議論タイムです。`);
+                startDiscussionTimer(room);
               }
               broadcastRoomState(room);
             }

@@ -15,7 +15,9 @@ import {
   Copy,
   Check,
   Target,
-  Shuffle
+  Shuffle,
+  Coins,
+  ListOrdered
 } from 'lucide-react';
 import { ClientGameState } from '../types/game.ts';
 import { socketService } from '../services/socket.ts';
@@ -32,6 +34,13 @@ const AI_PRESET_THEMES = [
   'ゲーム・エンタメ',
   '日本の観光・名所',
   '昭和・平成レトロ'
+];
+
+const INSIDER_POINT_OPTIONS = [
+  { value: 5, shortLabel: '5pt（難しい）' },
+  { value: 3, shortLabel: '3pt（普通）' },
+  { value: 2, shortLabel: '2pt（易しい）' },
+  { value: 0, shortLabel: '0pt（フリー）' }
 ];
 
 export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
@@ -508,6 +517,38 @@ export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
                   <option value="hard">上級（概念・自然現象など）</option>
                 </select>
               </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1 font-medium">インサイダーのポイント（ミッション）</label>
+                <select
+                  value={state.settings.insiderPointsInitial ?? 0}
+                  onChange={(e) =>
+                    socketService.updateSettings({ insiderPointsInitial: Number(e.target.value) })
+                  }
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value={5}>5pt（難しい）</option>
+                  <option value={3}>3pt（普通）</option>
+                  <option value={2}>2pt（易しい）</option>
+                  <option value={0}>0pt（フリー・通常ルール）</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1 font-medium">質問の手順</label>
+                <select
+                  value={state.settings.questionOrderMode ?? 'free'}
+                  onChange={(e) =>
+                    socketService.updateSettings({
+                      questionOrderMode: e.target.value as 'free' | 'sequential'
+                    })
+                  }
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value="free">自由（思いついた人がどんどん質問・解答）</option>
+                  <option value="sequential">順番に（ランダム順で1人ずつ質問・解答）</option>
+                </select>
+              </div>
             </div>
 
             {/* AI Topic Prompt & Candidate Selection */}
@@ -641,6 +682,18 @@ export const LobbyPhase: React.FC<LobbyPhaseProps> = ({ state }) => {
               {state.settings.masterSelectionMode === 'manual'
                 ? state.players.find((p) => p.id === state.settings.selectedMasterId)?.name || '手動選択'
                 : 'ランダム'}
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="flex items-center gap-1 text-purple-300/90">
+              <Coins className="w-3.5 h-3.5 text-purple-400" />
+              インサイダーP:{' '}
+              {INSIDER_POINT_OPTIONS.find((o) => o.value === (state.settings.insiderPointsInitial ?? 0))?.shortLabel ||
+                '0pt（フリー）'}
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="flex items-center gap-1 text-indigo-300/90">
+              <ListOrdered className="w-3.5 h-3.5 text-indigo-400" />
+              手順: {(state.settings.questionOrderMode ?? 'free') === 'sequential' ? '順番に' : '自由'}
             </span>
           </div>
 

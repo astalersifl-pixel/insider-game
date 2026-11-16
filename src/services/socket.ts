@@ -270,6 +270,18 @@ class SocketService {
     this.send({ type: 'ANSWER_QUESTION', questionId, answer });
   }
 
+  public deleteQuestion(questionId: string) {
+    this.send({ type: 'DELETE_QUESTION', questionId });
+  }
+
+  public confirmCorrectReveal() {
+    this.send({ type: 'CONFIRM_CORRECT_REVEAL' });
+  }
+
+  public skipTurn() {
+    this.send({ type: 'SKIP_TURN' });
+  }
+
   public setCustomWord(word: string, category?: string, hint?: string) {
     this.send({ type: 'SET_CUSTOM_WORD', word, category, hint });
   }

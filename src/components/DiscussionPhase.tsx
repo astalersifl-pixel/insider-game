@@ -6,7 +6,8 @@ import {
   MessageSquare,
   CheckCircle2,
   Send,
-  Sparkles
+  Sparkles,
+  Coins
 } from 'lucide-react';
 import { ClientGameState } from '../types/game.ts';
 import { socketService } from '../services/socket.ts';
@@ -65,7 +66,16 @@ export const DiscussionPhase: React.FC<DiscussionPhaseProps> = ({ state }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {(state.settings.insiderPointsInitial ?? 0) > 0 &&
+              state.insiderPointsRemaining !== undefined &&
+              state.insiderPointsRemaining !== null && (
+                <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-950/50 border border-amber-400/40 text-amber-300 font-bold text-xs">
+                  <Coins className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>所持P: {Math.max(0, state.insiderPointsRemaining)}pt</span>
+                </div>
+              )}
+
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-300 font-mono font-bold text-xs">
               <Clock className="w-3.5 h-3.5 text-purple-400" />
               <span>{timeFormatted}</span>

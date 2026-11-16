@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Crown, Users, CheckCircle2, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Crown, Users, CheckCircle2, ArrowRight, ShieldAlert, Sparkles, Coins } from 'lucide-react';
 import { ClientGameState } from '../types/game.ts';
 import { socketService } from '../services/socket.ts';
 import { soundEffects } from '../utils/audio.ts';
@@ -152,6 +152,40 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
                 <div className="text-[11px] text-slate-400">
                   カテゴリ: {state.secretCategory}
                 </div>
+              </div>
+            )}
+
+            {/* Insider-only Mission Conditions (Shown only when insiderPointsInitial > 0) */}
+            {isInsider && (state.settings.insiderPointsInitial ?? 0) > 0 && (
+              <div className="p-4 rounded-2xl bg-purple-950/70 border border-purple-400/50 text-left max-w-md mx-auto space-y-2.5 shadow-lg">
+                <div className="flex items-center justify-between gap-2 border-b border-purple-500/30 pb-2">
+                  <span className="text-xs font-black text-purple-200 flex items-center gap-1.5">
+                    <Coins className="w-4 h-4 text-amber-300 shrink-0" />
+                    インサイダー専用ミッション
+                  </span>
+                  <span className="text-xs font-black px-2 py-0.5 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                    初期 {state.settings.insiderPointsInitial}pt
+                  </span>
+                </div>
+
+                <ul className="space-y-1.5 text-xs text-slate-200">
+                  <li className="flex items-center justify-between gap-2 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-purple-500/20">
+                    <span>1、質問を3回行う</span>
+                    <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-2 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-purple-500/20">
+                    <span>2、答えが「はい」になる質問をする</span>
+                    <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-2 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-purple-500/20">
+                    <span>3、正解の答えをいう（お題を当てる！）</span>
+                    <span className="font-mono font-bold text-amber-300 shrink-0">-2pt</span>
+                  </li>
+                </ul>
+
+                <p className="text-[10px] text-purple-300/90 leading-relaxed">
+                  ※正解が出た際、残りポイント（0pt未満は0pt）のみ全員に表示されます。正体を隠しつつポイントを減らそう！
+                </p>
               </div>
             )}
 

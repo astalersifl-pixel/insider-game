@@ -4,6 +4,7 @@ export type GamePhase =
   | 'LOBBY'
   | 'ROLE_REVEAL'
   | 'QUESTION'
+  | 'CORRECT_REVEAL'
   | 'DISCUSSION'
   | 'VOTING'
   | 'RESULT';
@@ -33,6 +34,7 @@ export interface QuestionItem {
   timestamp: number;
   isGuesser?: boolean; // if this was the correct guess
   isCall?: boolean; // if this was a direct word guess attempt
+  isMasked?: boolean; // true while waiting for Master to answer (for non-Master/non-sender)
 }
 
 export interface ChatMessage {
@@ -52,6 +54,17 @@ export interface GameSettings {
   allowBots: boolean;
   masterSelectionMode: 'random' | 'manual';
   selectedMasterId?: string | null;
+  insiderPointsInitial: number; // 5 (hard), 3 (normal), 2 (easy), 0 (free/classic)
+  questionOrderMode: 'free' | 'sequential'; // 'free' | 'sequential'
+}
+
+export interface InsiderMissionStatus {
+  initialPoints: number;
+  questionCount: number; // out of 3
+  askedThreeQuestions: boolean; // -1pt
+  gotYesAnswer: boolean; // -1pt
+  guessedCorrectWord: boolean; // -2pt
+  remainingPoints: number; // clamped >= 0
 }
 
 export interface CustomWordData {
@@ -103,4 +116,8 @@ export interface ClientGameState {
   accusedVoteCount?: number;
   votes: Record<string, string> | null; // only visible in result
   roundNumber: number;
+  insiderPointsRemaining?: number | null; // visible in CORRECT_REVEAL/DISCUSSION/VOTING/RESULT when insiderPointsInitial > 0
+  insiderMissionStatus?: InsiderMissionStatus | null; // visible only to Insider (and all in RESULT)
+  questionTurnOrder?: string[]; // randomized non-master player IDs when questionOrderMode === 'sequential'
+  currentTurnPlayerId?: string | null; // active turn player ID when questionOrderMode === 'sequential'
 }
