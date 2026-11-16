@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Crown, EyeOff, Users, HelpCircle, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
+import { X, Crown, EyeOff, Users, HelpCircle, CheckCircle2, AlertTriangle, Sparkles, Coins } from 'lucide-react';
 
 interface HowToPlayModalProps {
   isOpen: boolean;
@@ -102,6 +102,34 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Insider Points Rule */}
+        <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-500/30 space-y-2.5">
+          <h4 className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
+            <Coins className="w-4 h-4 text-amber-300" />
+            インサイダーのポイント（特別ルール）
+          </h4>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            ルームルールで初期ポイント（<strong className="text-white">5pt 難しい / 3pt 普通 / 2pt 易しい</strong>）を設定すると、インサイダーに以下のミッションが課せられます（<strong className="text-white">0pt フリー</strong>の場合は通常ルール）。
+          </p>
+          <ul className="space-y-1 text-xs text-slate-200 bg-slate-950/60 p-3 rounded-lg border border-purple-500/20">
+            <li className="flex items-center justify-between gap-2">
+              <span>1、質問を3回行う</span>
+              <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
+            </li>
+            <li className="flex items-center justify-between gap-2">
+              <span>2、答えが「はい」になる質問をする</span>
+              <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
+            </li>
+            <li className="flex items-center justify-between gap-2">
+              <span>3、正解の答えをいう（「お題を当てる！」で正解）</span>
+              <span className="font-mono font-bold text-amber-300 shrink-0">-2pt</span>
+            </li>
+          </ul>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            ※役職発表時はインサイダーのみミッションが表示されます。正解が出たあと全員に<strong className="text-slate-200">残り所持ポイント</strong>（合計がマイナスになる場合は <strong className="text-slate-200">0pt</strong> 表示）と減算ルールが公開されるので、議論のヒントにしましょう！
+          </p>
         </div>
 
         {/* Win / Loss conditions */}
