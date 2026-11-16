@@ -78,24 +78,46 @@ export const CorrectRevealPhase: React.FC<CorrectRevealPhaseProps> = ({ state })
 
           {/* Insider Remaining Points Card (Only when Insider Points rule is active) */}
           {hasPointsRule && (
-            <div className="mt-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/75 via-slate-950/90 to-indigo-950/75 border border-purple-400/50 shadow-xl space-y-2 max-w-md mx-auto">
+            <div className="mt-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/75 via-slate-950/90 to-indigo-950/75 border border-purple-400/50 shadow-xl space-y-3 max-w-md mx-auto">
               <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-purple-300">
                 <Coins className="w-4 h-4 text-amber-300" />
                 <span>インサイダーの所持ポイント</span>
               </div>
 
-              <div className="flex items-baseline justify-center gap-1.5 py-1">
+              <div className="flex items-baseline justify-center gap-1.5 py-0.5">
                 <span className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-purple-300 bg-clip-text text-transparent">
                   {displayPoints}
                 </span>
                 <span className="text-lg sm:text-xl font-black text-amber-300">pt</span>
               </div>
 
-              <div className="text-[11px] text-slate-400">
-                初期 {state.settings.insiderPointsInitial}pt から達成ミッション分を減算（0pt以下は0pt表示）
+              {/* Point Deduction Rules Box (Visible to all players after correct answer) */}
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-purple-500/30 text-left space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-bold text-purple-200 border-b border-slate-800 pb-1">
+                  <span>ポイントの減算ルール</span>
+                  <span className="text-amber-300">初期 {state.settings.insiderPointsInitial}pt</span>
+                </div>
+                <ul className="space-y-1 text-[11px] text-slate-300">
+                  <li className="flex items-center justify-between gap-2">
+                    <span>1、質問を3回行う</span>
+                    <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-2">
+                    <span>2、答えが「はい」になる質問をする</span>
+                    <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-2">
+                    <span>3、正解の答えをいう</span>
+                    <span className="font-mono font-bold text-amber-300 shrink-0">-2pt</span>
+                  </li>
+                </ul>
+                <div className="text-[10px] text-slate-400 pt-0.5">
+                  ※合計がマイナスになった場合は <strong className="text-slate-200">0pt</strong> と表示されます
+                </div>
               </div>
-              <div className="text-[11px] text-purple-300/90 font-medium pt-0.5">
-                🕵️‍♂️ このポイント数をヒントに、議論でインサイダーを見抜こう！
+
+              <div className="text-[11px] text-purple-300/90 font-medium">
+                🕵️‍♂️ このポイント数をヒントに、誰が条件を満たしたか議論で見抜こう！
               </div>
             </div>
           )}
