@@ -147,6 +147,15 @@ function getCurrentTurnPlayerId(room: ServerRoom): string | null {
   return room.questionTurnOrder[idx] ?? null;
 }
 
+function canDecideSecretWord(room: ServerRoom, playerId: string): boolean {
+  const player = room.players.get(playerId);
+  if (!player) return false;
+  if (room.settings.masterSelectionMode === 'manual' && room.settings.selectedMasterId) {
+    return room.settings.selectedMasterId === playerId;
+  }
+  return player.isHost;
+}
+
 function computeInsiderMissionStatus(room: ServerRoom): InsiderMissionStatus {
   const initialPoints = room.settings.insiderPointsInitial ?? 0;
   const insiderId = room.currentInsiderId;
@@ -154,18 +163,20 @@ function computeInsiderMissionStatus(room: ServerRoom): InsiderMissionStatus {
     ? room.questions.filter(q => q.playerId === insiderId && !q.isCall)
     : [];
   const questionCount = insiderNormalQuestions.length;
-  const askedThreeQuestions = questionCount >= 3;
-  const gotYesAnswer = insiderNormalQuestions.some(q => q.answer === 'YES');
+  const threeQuestionCount = Math.floor(questionCount / 3);
+  const yesAnswerCount = insiderNormalQuestions.filter(q => q.answer === 'YES').length;
+  const askedThreeQuestions = threeQuestionCount > 0;
+  const gotYesAnswer = yesAnswerCount > 0;
   const guessedCorrectWord = !!insiderId && room.guesserId === insiderId;
 
-  let deduction = 0;
-  if (askedThreeQuestions) deduction += 1;
-  if (gotYesAnswer) deduction += 1;
-  if (guessedCorrectWord) deduction += 2;
+  const deduction =
+    threeQuestionCount * 1 + yesAnswerCount * 1 + (guessedCorrectWord ? 2 : 0);
 
   return {
     initialPoints,
     questionCount,
+    threeQuestionCount,
+    yesAnswerCount,
     askedThreeQuestions,
     gotYesAnswer,
     guessedCorrectWord,
@@ -238,7 +249,7 @@ function broadcastRoomState(room: ServerRoom) {
       secretCategory: room.secretCategory,
       customSecretWord: room.customSecretWord
         ? {
-            word: player.isHost ? room.customSecretWord.word : '（設定済み）',
+            word: canDecideSecretWord(room, playerId) ? room.customSecretWord.word : '（設定済み）',
             category: room.customSecretWord.category,
             hint: room.customSecretWord.hint
           }
@@ -616,7 +627,15 @@ wss.on('connection', (ws: WebSocket) => {
           const sender = room.players.get(boundPlayerId);
           if (!sender?.isHost) return;
           if (data.settings) {
+            const prevMode = room.settings.masterSelectionMode;
+            const prevMaster = room.settings.selectedMasterId;
             room.settings = { ...room.settings, ...data.settings };
+            if (
+              room.settings.masterSelectionMode !== prevMode ||
+              room.settings.selectedMasterId !== prevMaster
+            ) {
+              room.customSecretWord = null;
+            }
             broadcastRoomState(room);
           }
           break;
@@ -877,9 +896,10 @@ wss.on('connection', (ws: WebSocket) => {
         }
 
         case 'SET_CUSTOM_WORD': {
-          if (!boundRoomCode) return;
+          if (!boundRoomCode || !boundPlayerId) return;
           const room = rooms.get(boundRoomCode);
           if (!room) return;
+          if (!canDecideSecretWord(room, boundPlayerId)) return;
 
           const { word, category, hint } = data;
           if (word && typeof word === 'string' && word.trim()) {
@@ -888,7 +908,7 @@ wss.on('connection', (ws: WebSocket) => {
               category: (category || 'カスタム').trim(),
               hint: (hint || '').trim()
             };
-            addSystemChat(room, `🎯 次の試合のお題「${word.trim()}」が予約されました（ゲーム開始まで秘密です）。`);
+            addSystemChat(room, `🎯 次の試合の特別なお題が予約されました（ゲーム開始まで秘密です）。`);
           } else {
             room.customSecretWord = null;
             addSystemChat(room, `🎲 お題を通常プールからのランダム設定に戻しました。`);
