@@ -115,11 +115,11 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
           </p>
           <ul className="space-y-1 text-xs text-slate-200 bg-slate-950/60 p-3 rounded-lg border border-purple-500/20">
             <li className="flex items-center justify-between gap-2">
-              <span>1、質問を3回行う</span>
+              <span>1、質問を3回行う（3回ごとに何度でも）</span>
               <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
             </li>
             <li className="flex items-center justify-between gap-2">
-              <span>2、答えが「はい」になる質問をする</span>
+              <span>2、答えが「はい」になる質問をする（1回ごとに何度でも）</span>
               <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
             </li>
             <li className="flex items-center justify-between gap-2">
@@ -128,7 +128,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
             </li>
           </ul>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            ※役職発表時はインサイダーのみミッションが表示されます。正解が出たあと全員に<strong className="text-slate-200">残り所持ポイント</strong>（合計がマイナスになる場合は <strong className="text-slate-200">0pt</strong> 表示）と減算ルールが公開されるので、議論のヒントにしましょう！
+            ※1と2は条件を達成するたびに<strong className="text-slate-200">何度でも減算</strong>されます。役職発表時はインサイダーのみミッションが表示され、正解が出たあと全員に<strong className="text-slate-200">残り所持ポイント</strong>（合計がマイナスになる場合は <strong className="text-slate-200">0pt</strong> 表示）と減算ルールが公開されるので、議論のヒントにしましょう！
           </p>
         </div>
 

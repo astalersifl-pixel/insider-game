@@ -32,13 +32,13 @@ export const VotingPhase: React.FC<VotingPhaseProps> = ({ state }) => {
   const totalVoters = state.players.length;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      <div className="text-center space-y-2">
+    <div className="max-w-2xl mx-auto space-y-4 animate-fade-in">
+      <div className="text-center space-y-1.5">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
           <Vote className="w-3.5 h-3.5" />
           インサイダー告発投票
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-white">
+        <h2 className="text-xl sm:text-2xl font-black text-white">
           インサイダー（内通者）は誰だ？
         </h2>
         <p className="text-xs sm:text-sm text-slate-300">
@@ -47,7 +47,7 @@ export const VotingPhase: React.FC<VotingPhaseProps> = ({ state }) => {
       </div>
 
       {/* Target Candidates Selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {eligibleTargets.map((player) => {
           const isSelected = selectedTargetId === player.id;
           const isMe = player.id === state.myPlayerId;
@@ -56,14 +56,14 @@ export const VotingPhase: React.FC<VotingPhaseProps> = ({ state }) => {
             <div
               key={player.id}
               onClick={() => handleSelect(player.id)}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${
+              className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${
                 isSelected
                   ? 'bg-purple-950/50 border-purple-500 ring-2 ring-purple-500/60 shadow-lg shadow-purple-950/50'
                   : 'bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
               } ${hasVoted ? 'cursor-not-allowed opacity-80' : ''}`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl shrink-0 shadow-inner">
                   {player.avatar}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -91,7 +91,7 @@ export const VotingPhase: React.FC<VotingPhaseProps> = ({ state }) => {
       </div>
 
       {/* Vote Action Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-4 space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-400">
           <span className="flex items-center gap-1.5">
             <Users className="w-4 h-4 text-purple-400" />

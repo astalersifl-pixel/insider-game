@@ -9,31 +9,21 @@ import {
   Flame,
   Settings,
   Sparkles,
-  Target,
   ArrowRight,
   Vote,
   Clock,
   Check,
-  X,
   Shuffle,
   Coins
 } from 'lucide-react';
 import { ClientGameState } from '../types/game.ts';
 import { socketService } from '../services/socket.ts';
 import { soundEffects } from '../utils/audio.ts';
+import { CustomWordPicker } from './CustomWordPicker.tsx';
 
 interface ResultPhaseProps {
   state: ClientGameState;
 }
-
-const AI_PRESET_THEMES = [
-  'アニメ・マンガ',
-  '食べ物・スイーツ',
-  '日常・学校生活',
-  'ゲーム・エンタメ',
-  '日本の観光・名所',
-  '昭和・平成レトロ'
-];
 
 export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
   // 3-second suspense reveal state
@@ -42,18 +32,23 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
 
   // Settings & Custom Word modal for next match
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [customTheme, setCustomTheme] = useState('');
-  const [manualWord, setManualWord] = useState('');
-  const [manualCategory, setManualCategory] = useState('');
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [generatedCandidates, setGeneratedCandidates] = useState<Array<{ word: string; category: string; hint: string }>>([]);
-  const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [showMasterWordModal, setShowMasterWordModal] = useState(false);
 
   const me = state.players.find((p) => p.id === state.myPlayerId);
   const isHost = me?.isHost ?? false;
+  const isManualMasterMode = state.settings.masterSelectionMode === 'manual';
+  const isDesignatedMaster =
+    isManualMasterMode && state.settings.selectedMasterId === state.myPlayerId;
+  const canSetWord = isManualMasterMode
+    ? state.settings.selectedMasterId
+      ? isDesignatedMaster
+      : isHost
+    : isHost;
+  const designatedMasterPlayer = state.players.find(
+    (p) => p.id === state.settings.selectedMasterId
+  );
 
   const insider = state.players.find((p) => p.role === 'INSIDER');
-  const master = state.players.find((p) => p.id === state.currentMasterId);
   const accused = state.players.find((p) => p.id === state.accusedPlayerId);
 
   // 3-second countdown suspense
@@ -100,53 +95,9 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
     socketService.backToLobby();
   };
 
-  const handleGenerateAiWords = async (themeToUse?: string) => {
-    const theme = themeToUse || customTheme;
-    if (!theme.trim()) return;
-    setIsGeneratingAi(true);
-    setAiMessage(null);
-    soundEffects.click();
-
-    try {
-      const res = await fetch('/api/ai/generate-words', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme })
-      });
-      const data = await res.json();
-      if (res.ok && data.words && data.words.length > 0) {
-        setGeneratedCandidates(data.words);
-        setAiMessage(`✨ AIがお題候補を${data.words.length}つ生成しました！使いたいお題をクリックして選択してください。`);
-      } else {
-        setAiMessage('⚠️ AIお題の生成に失敗しました（通常のお題を使用します）');
-      }
-    } catch {
-      setAiMessage('⚠️ 通信エラーによりお題の生成に失敗しました');
-    } finally {
-      setIsGeneratingAi(false);
-    }
-  };
-
-  const handleSelectWord = (item: { word: string; category: string; hint: string }) => {
-    soundEffects.click();
-    socketService.setCustomWord(item.word, item.category, item.hint);
-    setAiMessage(`✓ 次の試合のお題を「${item.word}」に設定しました！`);
-  };
-
-  const handleSetManualWord = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!manualWord.trim()) return;
-    soundEffects.click();
-    socketService.setCustomWord(manualWord.trim(), manualCategory.trim() || 'カスタム');
-    setAiMessage(`✓ 次の試合のお題を「${manualWord.trim()}」に設定しました！`);
-    setManualWord('');
-    setManualCategory('');
-  };
-
   const handleResetWord = () => {
     soundEffects.click();
     socketService.setCustomWord('');
-    setAiMessage('🎲 お題を通常プールからのランダム設定に戻しました');
   };
 
   // 1. Suspense Reveal Phase (3 seconds)
@@ -201,10 +152,10 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
 
   // 2. Final Victory / Defeat Result Phase
   return (
-    <div className="max-w-3xl mx-auto space-y-5 animate-fade-in">
+    <div className="max-w-3xl mx-auto space-y-3.5 animate-fade-in">
       {/* Victory / Defeat Banner */}
       <div
-        className={`rounded-3xl border p-6 sm:p-8 text-center space-y-3 shadow-2xl relative overflow-hidden ${
+        className={`rounded-2xl sm:rounded-3xl border p-4 sm:p-6 text-center space-y-2.5 shadow-2xl relative overflow-hidden ${
           state.winnerTeam === 'COMMONERS'
             ? 'bg-gradient-to-b from-emerald-950/60 via-slate-900 to-slate-950 border-emerald-500/50 shadow-emerald-950/40'
             : state.winnerTeam === 'INSIDER'
@@ -266,13 +217,13 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
       </div>
 
       {/* Role Reveal & Vote Breakdown */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-4 space-y-3">
         <h3 className="font-bold text-sm text-white flex items-center gap-2">
           <Users className="w-4 h-4 text-purple-400" />
           全プレイヤーの正体と投票結果
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
           {state.players.map((p) => {
             const isMasterRole = p.role === 'MASTER';
             const isInsiderRole = p.role === 'INSIDER';
@@ -281,7 +232,7 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
             return (
               <div
                 key={p.id}
-                className={`p-3.5 rounded-xl border space-y-2 ${
+                className={`p-3 rounded-xl border space-y-1.5 ${
                   isInsiderRole
                     ? 'bg-purple-950/40 border-purple-500/60 shadow-md shadow-purple-950/30'
                     : isMasterRole
@@ -331,7 +282,7 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
 
       {/* Insider Mission Breakdown (when Insider Points rule is active) */}
       {(state.settings.insiderPointsInitial ?? 0) > 0 && state.insiderMissionStatus && (
-        <div className="bg-slate-900 border border-purple-500/40 rounded-2xl p-4 sm:p-5 space-y-3">
+        <div className="bg-slate-900 border border-purple-500/40 rounded-2xl p-3.5 sm:p-4 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-bold text-sm text-white flex items-center gap-2">
               <Coins className="w-4 h-4 text-amber-300" />
@@ -344,26 +295,30 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
             <div
               className={`p-2.5 rounded-xl border flex items-center justify-between ${
-                state.insiderMissionStatus.askedThreeQuestions
+                state.insiderMissionStatus.threeQuestionCount > 0
                   ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                   : 'bg-slate-950/60 border-slate-800 text-slate-400'
               }`}
             >
-              <span>1. 質問を3回 ({state.insiderMissionStatus.questionCount}回)</span>
+              <span>1. 質問3回ごと ({state.insiderMissionStatus.questionCount}回)</span>
               <span className="font-mono font-bold">
-                {state.insiderMissionStatus.askedThreeQuestions ? '-1pt ✓' : '未達成'}
+                {state.insiderMissionStatus.threeQuestionCount > 0
+                  ? `-${state.insiderMissionStatus.threeQuestionCount}pt (×${state.insiderMissionStatus.threeQuestionCount})`
+                  : '未達成'}
               </span>
             </div>
             <div
               className={`p-2.5 rounded-xl border flex items-center justify-between ${
-                state.insiderMissionStatus.gotYesAnswer
+                state.insiderMissionStatus.yesAnswerCount > 0
                   ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                   : 'bg-slate-950/60 border-slate-800 text-slate-400'
               }`}
             >
-              <span>2. 「はい」の質問</span>
+              <span>2. 「はい」の質問 ({state.insiderMissionStatus.yesAnswerCount}回)</span>
               <span className="font-mono font-bold">
-                {state.insiderMissionStatus.gotYesAnswer ? '-1pt ✓' : '未達成'}
+                {state.insiderMissionStatus.yesAnswerCount > 0
+                  ? `-${state.insiderMissionStatus.yesAnswerCount}pt (×${state.insiderMissionStatus.yesAnswerCount})`
+                  : '未達成'}
               </span>
             </div>
             <div
@@ -384,18 +339,26 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
 
       {/* Custom Secret Word Indicator (if set for next round) */}
       {state.customSecretWord && (
-        <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 text-xs flex items-center justify-between gap-2">
+        <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/40 text-xs flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-purple-300">
             <Sparkles className="w-4 h-4 text-pink-400 shrink-0" />
             <span>
-              次の試合の予約お題: <strong className="text-white">「{state.customSecretWord.word}」</strong>
-              <span className="text-slate-400 ml-1">({state.customSecretWord.category})</span>
+              {canSetWord ? (
+                <>
+                  次の試合の予約お題: <strong className="text-white">「{state.customSecretWord.word}」</strong>
+                  <span className="text-slate-400 ml-1">({state.customSecretWord.category})</span>
+                </>
+              ) : isManualMasterMode ? (
+                <>✨ 次期マスター（{designatedMasterPlayer?.name || '指定'}）がお題を設定済みです！</>
+              ) : (
+                <>✨ ホストが次の試合の特別なお題を設定しました！</>
+              )}
             </span>
           </div>
-          {isHost && (
+          {canSetWord && (
             <button
               onClick={handleResetWord}
-              className="text-[11px] text-slate-400 hover:text-rose-300 underline cursor-pointer"
+              className="text-[11px] text-slate-400 hover:text-rose-300 underline cursor-pointer shrink-0"
             >
               解除する
             </button>
@@ -404,7 +367,7 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
       )}
 
       {/* Action Controls & Next Match Settings */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
         <button
           onClick={handleBackToLobby}
           className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
@@ -414,6 +377,19 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
         </button>
 
         <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+          {canSetWord && !isHost && (
+            <button
+              onClick={() => {
+                soundEffects.click();
+                setShowMasterWordModal(true);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            >
+              <Crown className="w-4 h-4" />
+              <span>次回のお題を決める（マスター特典）</span>
+            </button>
+          )}
+
           {isHost && (
             <button
               onClick={() => {
@@ -430,7 +406,7 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
           {isHost && (
             <button
               onClick={handleNextRound}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
               <span>
@@ -641,118 +617,17 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
                 </select>
               </div>
 
-              {/* AI Topic Generator Section */}
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="text-slate-200 block font-bold flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-pink-400" />
-                  Gemini AIでお題をカスタマイズ生成
-                </label>
-                <p className="text-[11px] text-slate-400">
-                  好きなテーマを入力するかタグをクリックすると、AIがピッタリなお題候補を5つ生成します！
-                </p>
-
-                {/* Preset Chips */}
-                <div className="flex flex-wrap gap-1.5">
-                  {AI_PRESET_THEMES.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => {
-                        setCustomTheme(preset);
-                        handleGenerateAiWords(preset);
-                      }}
-                      className="text-[10px] px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
-                    >
-                      {preset}
-                    </button>
-                  ))}
+              {canSetWord ? (
+                <div className="pt-2 border-t border-slate-800">
+                  <CustomWordPicker state={state} />
                 </div>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customTheme}
-                    onChange={(e) => setCustomTheme(e.target.value)}
-                    placeholder="テーマを入力（例: アニメ、学校、夏休み）"
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder:text-slate-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateAiWords()}
-                    disabled={isGeneratingAi || !customTheme.trim()}
-                    className="px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:opacity-50 text-white rounded-lg font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
-                  >
-                    {isGeneratingAi ? '生成中...' : '生成する'}
-                  </button>
-                </div>
-
-                {/* Generated AI Candidates List */}
-                {generatedCandidates.length > 0 && (
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-[11px] font-bold text-slate-300">
-                      生成された候補（クリックして設定）:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      {generatedCandidates.map((c, i) => {
-                        const isChosen = state.customSecretWord?.word === c.word;
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => handleSelectWord(c)}
-                            className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center justify-between ${
-                              isChosen
-                                ? 'bg-purple-950/70 border-purple-400 text-white ring-1 ring-purple-400'
-                                : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
-                            }`}
-                          >
-                            <div>
-                              <div className="font-bold text-xs">{c.word}</div>
-                              <div className="text-[10px] text-slate-500">{c.category}</div>
-                            </div>
-                            {isChosen && <Check className="w-4 h-4 text-emerald-400" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Direct Manual Word Input */}
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <label className="text-slate-200 block font-bold flex items-center gap-1.5">
-                  <Target className="w-4 h-4 text-emerald-400" />
-                  または自由なお題を直接入力
-                </label>
-                <form onSubmit={handleSetManualWord} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={manualWord}
-                    onChange={(e) => setManualWord(e.target.value)}
-                    placeholder="お題（例: 鬼滅の刃）"
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder:text-slate-500"
-                  />
-                  <input
-                    type="text"
-                    value={manualCategory}
-                    onChange={(e) => setManualCategory(e.target.value)}
-                    placeholder="カテゴリ（任意）"
-                    className="w-24 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-white placeholder:text-slate-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!manualWord.trim()}
-                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg font-bold transition shrink-0 cursor-pointer"
-                  >
-                    設定
-                  </button>
-                </form>
-              </div>
-
-              {aiMessage && (
-                <div className="p-2.5 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-300 text-xs">
-                  {aiMessage}
+              ) : (
+                <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>
+                    マスター指定制のため、お題を決める権利は次回マスターの{' '}
+                    <strong>{designatedMasterPlayer?.name || '指定プレイヤー'}</strong> さんにあります。
+                  </span>
                 </div>
               )}
             </div>
@@ -762,6 +637,43 @@ export const ResultPhase: React.FC<ResultPhaseProps> = ({ state }) => {
                 type="button"
                 onClick={() => setShowSettingsModal(false)}
                 className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition cursor-pointer"
+              >
+                完了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Designated Master Next-Round Custom Word Modal */}
+      {showMasterWordModal && canSetWord && !isHost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-sm sm:text-base">
+                <Crown className="w-5 h-5 text-amber-400" />
+                <span>次回のお題を決める（マスター特典）</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMasterWordModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              次回のマスターとして、AI生成または自由入力でお題を予約できます（ホストを含む他のプレイヤーにはゲーム開始まで秘密にされます）。
+            </p>
+
+            <CustomWordPicker state={state} />
+
+            <div className="pt-2 border-t border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowMasterWordModal(false)}
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition cursor-pointer"
               >
                 完了
               </button>

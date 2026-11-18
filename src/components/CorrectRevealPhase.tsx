@@ -36,31 +36,31 @@ export const CorrectRevealPhase: React.FC<CorrectRevealPhaseProps> = ({ state })
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-5 animate-fade-in min-w-0">
+    <div className="w-full max-w-2xl mx-auto space-y-3.5 animate-fade-in min-w-0">
       {/* Celebratory Hero Card */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-400/50 bg-gradient-to-b from-amber-950/60 via-slate-900 to-slate-950 p-6 sm:p-8 text-center shadow-2xl shadow-amber-900/30">
+      <div className="relative overflow-hidden rounded-3xl border border-amber-400/50 bg-gradient-to-b from-amber-950/60 via-slate-900 to-slate-950 p-4 sm:p-6 text-center shadow-2xl shadow-amber-900/30">
         {/* Decorative background glows */}
         <div className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-amber-400/15 blur-3xl animate-pulse" />
         <div className="pointer-events-none absolute -bottom-16 -right-10 w-48 h-48 rounded-full bg-emerald-400/10 blur-3xl" />
 
-        <div className="relative z-10 space-y-4">
+        <div className="relative z-10 space-y-3">
           {/* Celebratory badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/30 animate-bounce">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/30 animate-bounce">
             <Trophy className="w-4 h-4" />
             <span>お題正解！！おめでとう！</span>
             <Sparkles className="w-4 h-4" />
           </div>
 
           {/* Secret word spotlight */}
-          <div className="space-y-1.5 pt-1">
+          <div className="space-y-1">
             <div className="text-[11px] font-bold uppercase tracking-widest text-amber-300/80">
               今回のお題
             </div>
-            <div className="inline-block px-6 py-3 rounded-2xl bg-slate-950/85 border border-amber-400/40 shadow-inner max-w-full">
-              <div className="text-2xl sm:text-4xl font-black text-white tracking-wide break-words [overflow-wrap:anywhere]">
+            <div className="inline-block px-5 py-2.5 rounded-2xl bg-slate-950/85 border border-amber-400/40 shadow-inner max-w-full">
+              <div className="text-2xl sm:text-3xl font-black text-white tracking-wide break-words [overflow-wrap:anywhere]">
                 「{state.secretWord}」
               </div>
-              <div className="text-xs text-slate-400 mt-1">
+              <div className="text-xs text-slate-400 mt-0.5">
                 カテゴリ: {state.secretCategory}
               </div>
             </div>
@@ -78,32 +78,32 @@ export const CorrectRevealPhase: React.FC<CorrectRevealPhaseProps> = ({ state })
 
           {/* Insider Remaining Points Card (Only when Insider Points rule is active) */}
           {hasPointsRule && (
-            <div className="mt-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/75 via-slate-950/90 to-indigo-950/75 border border-purple-400/50 shadow-xl space-y-3 max-w-md mx-auto">
+            <div className="mt-2 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-purple-950/75 via-slate-950/90 to-indigo-950/75 border border-purple-400/50 shadow-xl space-y-2 max-w-md mx-auto">
               <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-purple-300">
                 <Coins className="w-4 h-4 text-amber-300" />
                 <span>インサイダーの所持ポイント</span>
               </div>
 
-              <div className="flex items-baseline justify-center gap-1.5 py-0.5">
-                <span className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-purple-300 bg-clip-text text-transparent">
+              <div className="flex items-baseline justify-center gap-1.5">
+                <span className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-purple-300 bg-clip-text text-transparent">
                   {displayPoints}
                 </span>
-                <span className="text-lg sm:text-xl font-black text-amber-300">pt</span>
+                <span className="text-base sm:text-lg font-black text-amber-300">pt</span>
               </div>
 
               {/* Point Deduction Rules Box (Visible to all players after correct answer) */}
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-purple-500/30 text-left space-y-1.5">
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-purple-500/30 text-left space-y-1">
                 <div className="flex items-center justify-between text-[11px] font-bold text-purple-200 border-b border-slate-800 pb-1">
                   <span>ポイントの減算ルール</span>
                   <span className="text-amber-300">初期 {state.settings.insiderPointsInitial}pt</span>
                 </div>
                 <ul className="space-y-1 text-[11px] text-slate-300">
                   <li className="flex items-center justify-between gap-2">
-                    <span>1、質問を3回行う</span>
+                    <span>1、質問を3回行う（3回ごとに何度でも）</span>
                     <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
                   </li>
                   <li className="flex items-center justify-between gap-2">
-                    <span>2、答えが「はい」になる質問をする</span>
+                    <span>2、答えが「はい」になる質問をする（1回ごとに何度でも）</span>
                     <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
                   </li>
                   <li className="flex items-center justify-between gap-2">
@@ -125,7 +125,7 @@ export const CorrectRevealPhase: React.FC<CorrectRevealPhaseProps> = ({ state })
       </div>
 
       {/* Confirmation Section: Wait for all players to tap 完了 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-lg">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-4 space-y-3 shadow-lg">
         <div className="flex items-center justify-between text-xs text-slate-300">
           <span className="flex items-center gap-1.5 font-bold">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />

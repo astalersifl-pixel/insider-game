@@ -117,8 +117,8 @@ export default function App() {
           onOpenRules={() => setIsRulesOpen(true)}
         />
 
-        <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <main className="flex-1 flex items-center justify-center p-3 sm:p-5">
+          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
             {/* Title / Hero */}
             <div className="text-center space-y-2">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 flex items-center justify-center mx-auto shadow-xl shadow-purple-600/30">
@@ -292,7 +292,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex-1 p-4 sm:p-6 flex flex-col justify-center w-full overflow-x-hidden">
+      <main className="flex-1 p-3 sm:p-5 flex flex-col justify-center w-full overflow-x-hidden">
         {gameState.phase === 'LOBBY' && <LobbyPhase state={gameState} />}
         {gameState.phase === 'ROLE_REVEAL' && <RevealPhase state={gameState} />}
         {gameState.phase === 'QUESTION' && <QuestionPhase state={gameState} />}

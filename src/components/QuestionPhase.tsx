@@ -112,12 +112,12 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
   const isUrgent = state.timeRemaining <= 60;
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4 min-w-0">
+    <div className="w-full max-w-4xl mx-auto space-y-2.5 sm:space-y-3 min-w-0">
       {/* Top Banner: Timer & Secret Word info */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
         {/* Timer Box */}
         <div
-          className={`md:col-span-4 p-4 rounded-2xl border flex items-center justify-between shadow-lg transition-colors min-w-0 ${
+          className={`md:col-span-4 p-3 rounded-2xl border flex items-center justify-between shadow-lg transition-colors min-w-0 ${
             isUrgent
               ? 'bg-rose-950/40 border-rose-500/60 text-rose-300 animate-pulse'
               : 'bg-slate-900 border-slate-800 text-slate-200'
@@ -141,7 +141,7 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
         </div>
 
         {/* Master & Secret Word Info Header */}
-        <div className="md:col-span-8 p-3.5 sm:p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 shadow-lg min-w-0">
+        <div className="md:col-span-8 p-3 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2.5 shadow-lg min-w-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-xl shrink-0">
               {masterPlayer?.avatar || '👑'}
@@ -175,7 +175,7 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
 
       {/* Sequential Turn Order Tracker */}
       {isSequentialMode && turnOrderIds.length > 0 && (
-        <div className="p-3 rounded-2xl bg-indigo-950/35 border border-indigo-500/40 space-y-2 shadow-md">
+        <div className="p-2.5 rounded-2xl bg-indigo-950/35 border border-indigo-500/40 space-y-1.5 shadow-md">
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="font-bold text-indigo-200 flex items-center gap-1.5">
               <ListOrdered className="w-4 h-4 text-indigo-400 shrink-0" />
@@ -228,7 +228,7 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
 
       {/* Insider-only Mission Progress Tracker */}
       {isInsider && state.insiderMissionStatus && (
-        <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-500/40 space-y-2 shadow-md">
+        <div className="p-2.5 rounded-2xl bg-purple-950/40 border border-purple-500/40 space-y-1.5 shadow-md">
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="font-bold text-purple-200 flex items-center gap-1.5">
               <Coins className="w-3.5 h-3.5 text-amber-300 shrink-0" />
@@ -241,23 +241,23 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px]">
             <div
               className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between ${
-                state.insiderMissionStatus.askedThreeQuestions
+                state.insiderMissionStatus.threeQuestionCount > 0
                   ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300'
                   : 'bg-slate-950/60 border-slate-800 text-slate-300'
               }`}
             >
-              <span>1. 質問3回 ({Math.min(3, state.insiderMissionStatus.questionCount)}/3)</span>
-              <span className="font-mono font-bold">-1pt</span>
+              <span>1. 質問3回ごと ({state.insiderMissionStatus.questionCount}回)</span>
+              <span className="font-mono font-bold">-{state.insiderMissionStatus.threeQuestionCount}pt</span>
             </div>
             <div
               className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between ${
-                state.insiderMissionStatus.gotYesAnswer
+                state.insiderMissionStatus.yesAnswerCount > 0
                   ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300'
                   : 'bg-slate-950/60 border-slate-800 text-slate-300'
               }`}
             >
-              <span>2. 「はい」の質問</span>
-              <span className="font-mono font-bold">-1pt</span>
+              <span>2. 「はい」ごと ({state.insiderMissionStatus.yesAnswerCount}回)</span>
+              <span className="font-mono font-bold">-{state.insiderMissionStatus.yesAnswerCount}pt</span>
             </div>
             <div
               className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between ${
@@ -274,8 +274,8 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
       )}
 
       {/* Main Questions & Answers Feed */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 min-w-0 overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-2.5 min-w-0 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <div className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-purple-400" />
             <h3 className="font-bold text-sm text-white">質問と回答のタイムライン</h3>
@@ -287,9 +287,9 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
         </div>
 
         {/* Questions list */}
-        <div className="space-y-3.5 min-h-[280px] max-h-[460px] overflow-y-auto pr-1">
+        <div className="space-y-2.5 min-h-[190px] max-h-[310px] sm:max-h-[370px] overflow-y-auto pr-1">
           {state.questions.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 space-y-2">
+            <div className="text-center py-8 text-slate-500 space-y-2">
               <HelpCircle className="w-10 h-10 mx-auto text-slate-600" />
               <p className="text-xs sm:text-sm">まだ質問がありません。</p>
               <p className="text-[11px] text-slate-500">
@@ -304,7 +304,7 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
               return (
                 <div
                   key={q.id}
-                  className={`p-3 sm:p-3.5 rounded-xl border transition-all min-w-0 overflow-hidden ${
+                  className={`p-2.5 sm:p-3 rounded-xl border transition-all min-w-0 overflow-hidden ${
                     isCorrect
                       ? 'bg-amber-950/40 border-amber-500/60 shadow-lg shadow-amber-950/50'
                       : isPending
@@ -481,7 +481,7 @@ export const QuestionPhase: React.FC<QuestionPhaseProps> = ({ state }) => {
 
         {/* Non-Master Question Controls: Presets + Question Input + Direct Guess Button */}
         {!isMaster ? (
-          <div className="space-y-3 pt-3 border-t border-slate-800">
+          <div className="space-y-2.5 pt-2.5 border-t border-slate-800">
             {isSequentialMode && (
               <div
                 className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${

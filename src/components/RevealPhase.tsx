@@ -42,13 +42,13 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
   const totalPlayers = state.players.length;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      <div className="text-center space-y-2">
+    <div className="max-w-2xl mx-auto space-y-3.5 sm:space-y-4 animate-fade-in">
+      <div className="text-center space-y-1.5">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
           <Eye className="w-3.5 h-3.5" />
           ラウンド {state.roundNumber}：役職＆お題の確認
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-white">
           あなたの秘密の役割を確認してください
         </h2>
         <p className="text-xs sm:text-sm text-slate-400">
@@ -59,7 +59,7 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
       {/* Secret Card */}
       <div
         onClick={handleToggleReveal}
-        className={`cursor-pointer select-none rounded-3xl border transition-all duration-500 p-8 shadow-2xl relative overflow-hidden text-center min-h-[300px] flex flex-col items-center justify-center ${
+        className={`cursor-pointer select-none rounded-3xl border transition-all duration-500 p-5 sm:p-6 shadow-2xl relative overflow-hidden text-center min-h-[220px] sm:min-h-[240px] flex flex-col items-center justify-center ${
           !isRevealed
             ? 'bg-slate-900 border-slate-700 hover:border-purple-500/60 shadow-purple-950/20'
             : isMaster
@@ -84,7 +84,7 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
             </div>
           </div>
         ) : (
-          <div className="space-y-5 animate-scale-up">
+          <div className="space-y-3.5 animate-scale-up">
             {/* Role Header */}
             {isMaster && (
               <div className="space-y-2">
@@ -157,8 +157,8 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
 
             {/* Insider-only Mission Conditions (Shown only when insiderPointsInitial > 0) */}
             {isInsider && (state.settings.insiderPointsInitial ?? 0) > 0 && (
-              <div className="p-4 rounded-2xl bg-purple-950/70 border border-purple-400/50 text-left max-w-md mx-auto space-y-2.5 shadow-lg">
-                <div className="flex items-center justify-between gap-2 border-b border-purple-500/30 pb-2">
+              <div className="p-3.5 rounded-2xl bg-purple-950/70 border border-purple-400/50 text-left max-w-md mx-auto space-y-2 shadow-lg">
+                <div className="flex items-center justify-between gap-2 border-b border-purple-500/30 pb-1.5">
                   <span className="text-xs font-black text-purple-200 flex items-center gap-1.5">
                     <Coins className="w-4 h-4 text-amber-300 shrink-0" />
                     インサイダー専用ミッション
@@ -168,13 +168,13 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
                   </span>
                 </div>
 
-                <ul className="space-y-1.5 text-xs text-slate-200">
+                <ul className="space-y-1 text-xs text-slate-200">
                   <li className="flex items-center justify-between gap-2 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-purple-500/20">
-                    <span>1、質問を3回行う</span>
+                    <span>1、質問を3回行う（3回ごとに何度でも）</span>
                     <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
                   </li>
                   <li className="flex items-center justify-between gap-2 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-purple-500/20">
-                    <span>2、答えが「はい」になる質問をする</span>
+                    <span>2、答えが「はい」になる質問をする（1回ごとに何度でも）</span>
                     <span className="font-mono font-bold text-amber-300 shrink-0">-1pt</span>
                   </li>
                   <li className="flex items-center justify-between gap-2 bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-purple-500/20">
@@ -189,7 +189,7 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
               </div>
             )}
 
-            <p className="text-[11px] text-slate-500 pt-2">
+            <p className="text-[11px] text-slate-500 pt-1">
               (もう一度タップすると伏せることができます)
             </p>
           </div>
@@ -197,7 +197,7 @@ export const RevealPhase: React.FC<RevealPhaseProps> = ({ state }) => {
       </div>
 
       {/* Confirmation & Status Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-4 space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-300">
           <span className="flex items-center gap-1.5 font-medium">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
