@@ -60,9 +60,11 @@ export interface GameSettings {
 
 export interface InsiderMissionStatus {
   initialPoints: number;
-  questionCount: number; // out of 3
-  askedThreeQuestions: boolean; // -1pt
-  gotYesAnswer: boolean; // -1pt
+  questionCount: number; // total non-call questions asked by Insider
+  threeQuestionCount: number; // Math.floor(questionCount / 3), -1pt each
+  yesAnswerCount: number; // count of YES answers on non-call questions, -1pt each
+  askedThreeQuestions: boolean; // threeQuestionCount > 0
+  gotYesAnswer: boolean; // yesAnswerCount > 0
   guessedCorrectWord: boolean; // -2pt
   remainingPoints: number; // clamped >= 0
 }
